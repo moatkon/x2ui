@@ -1,0 +1,62 @@
+#!/bin/bash
+
+# 拉取最新代码到本地仓库
+echo "=========>>>拉取最新代码到本地仓库,开始fetch操作"
+git fetch
+echo "=========>>>fetch 成功"
+
+echo ""
+
+
+# 检查本地分支是否落后于远程分支,如果是,则先合并远程分支
+if [ -n "$(git status -uno | grep 'Your branch is behind')" ]; then
+    echo "=========>>>本地分支落后于远程分支,先合并远程分支"
+    git pull
+    echo "=========>>>合并远程分支完成"
+    echo ""
+fi
+
+# 获取当前分支
+branch=$(git rev-parse --abbrev-ref HEAD)
+
+# 检查是否存在未推送的本地 commit,如果有则先执行推送操作
+if [ -n "$(git log origin/${branch}..HEAD --oneline)" ]; then
+    echo "=========>>>存在未推送的本地 commit,先执行推送操作"
+    git push origin HEAD
+    echo "=========>>>push 完成"
+fi
+
+# 检查是否存在未提交的修改
+if [ -z "$(git status --porcelain)" ]; then
+    echo "=========>>>当前仓库没有未提交的修改,很干净"
+    exit 1
+fi
+
+
+# 获取提交注释
+if [ -z "$1" ]
+  then
+
+    if [ -z "$message" ]
+      then
+        timestamp=$(date +%s)
+        message="commit $timestamp"
+    fi
+  else
+    message="$1"
+fi
+
+# 添加所有修改到 Git
+git add .
+
+# 提交修改
+git commit -m "$message" --no-verify
+
+# 输出提交信息
+echo "=========>>>提交注释:  $message"
+
+# 推送代码到远程 Git 仓库
+git push origin HEAD
+
+# 输出推送信息
+echo "=========>>>已将代码推送到远程仓库"
