@@ -1,56 +1,39 @@
 import Link from "next/link";
+import { nodes } from "@/lib/mock-data";
 import { ThemeToggle } from "./client/demo-actions";
 import { Avatar } from "./shared/avatar";
+import { Notice, Panel, ProgressBar } from "./shared/ui";
 
-const navigation = [
-  ["首页", "/feed"], ["节点", "/nodes"], ["关注", "/following"],
-  ["金币", "/coins"], ["共建", "/journey"], ["搜索", "/search"],
-] as const;
+const navigation = [["首页", "/feed"], ["节点", "/nodes"], ["关注", "/following"], ["金币", "/coins"], ["共建", "/journey"], ["搜索", "/search"]] as const;
 
 function isActive(path: string, href: string) {
-  return href === "/feed" ? path === href : path === href || path.startsWith(`${href}/`);
+  if (href === "/feed") return path === href;
+  if (href === "/journey") return path.startsWith("/journey") || path.startsWith("/quests") || path.startsWith("/seasons") || ["/me/progress", "/me/contributions", "/me/collection"].includes(path);
+  return path === href || path.startsWith(`${href}/`);
+}
+
+function UserMenu() {
+  return <details className="dropdown dropdown-end"><summary className="btn btn-ghost" aria-label="打开用户菜单"><Avatar name="林默" image="user-linmo" sizeClass="size-8" /><span className="hidden sm:inline">林默</span></summary><ul className="menu dropdown-content z-30 mt-2 max-h-[80vh] w-60 overflow-y-auto border-2 border-base-content/20 bg-base-100 p-2"><li><Link href="/me">我的主页</Link></li><li><Link href="/coins">金币与账本</Link></li><li><Link href="/journey">共建旅程</Link></li><li><Link href="/bookmarks">我的收藏</Link></li><li><Link href="/drafts">我的草稿</Link></li><li><Link href="/me/reports">举报进度</Link></li><li><Link href="/settings/blocked">屏蔽列表</Link></li><li><Link href="/appeals">我的申诉</Link></li><li><Link href="/settings/profile">设置</Link></li><li className="menu-title">治理</li><li><Link href="/moderation/cases">治理工作台</Link></li><li><Link href="/moderation/coins">金币风险案件</Link></li><li><Link href="/moderation/audit-logs">审计日志</Link></li><li className="menu-title">Controller</li><li><Link href="/admin/coins/control">金币控制台</Link></li><li><Link href="/admin/coins/reconciliation">对账与关账</Link></li></ul></details>;
+}
+
+function AccountRail() {
+  return <><Panel title="我的 X2Post" footer={<div className="flex flex-wrap gap-x-4 gap-y-2 text-sm"><Link className="link" href="/me">主页</Link><Link className="link" href="/notifications">通知</Link><Link className="link" href="/drafts">草稿</Link></div>}><div className="flex items-center gap-3"><Avatar name="林默" image="user-linmo" sizeClass="size-12" /><div><Link className="font-bold hover:underline" href="/me">林默</Link><p className="text-sm opacity-65">产品设计 · 上海</p></div></div><dl className="mt-4 grid grid-cols-3 gap-2 text-center"><div><dt className="text-xs opacity-60">未读</dt><dd className="font-bold">6</dd></div><div><dt className="text-xs opacity-60">草稿</dt><dd className="font-bold">3</dd></div><div><dt className="text-xs opacity-60">关注</dt><dd className="font-bold">48</dd></div></dl></Panel><Panel className="mt-4" title="社区安全"><p className="text-sm leading-relaxed opacity-75">不舒服的互动可以举报或屏蔽。每个举报都会留下进度记录。</p><Link className="link mt-3 inline-block text-sm" href="/reports">查看我的举报</Link></Panel></>;
+}
+
+function SideRail({ path }: { path: string }) {
+  if (path === "/quick-compose") return null;
+  if (path.startsWith("/compose") || path.startsWith("/drafts")) return <><Panel title="发布须知"><Notice kind="warning"><p>轻内容和长帖发布后都不能编辑、删除或撤回。发布前请完成确认。</p></Notice></Panel><Panel className="mt-4" title="AI 辅助边界"><p className="text-sm leading-relaxed opacity-75">AI 只能整理你已经写下的原意，不补充事实、不代替判断、不自动发布。采用后会公开标注“AI 协助整理”。</p></Panel><Panel className="mt-4" title="草稿状态"><p className="font-semibold">已自动保存</p><p className="mt-1 text-sm opacity-65">今天 14:32 · 本地演示</p></Panel></>;
+  if (path.startsWith("/coins")) return <><Panel title="经济边界" footer={<div className="flex flex-wrap gap-4 text-sm"><Link className="link" href="/coins/rules">完整规则</Link><Link className="link" href="/settings/coins">金币设置</Link><Link className="link" href="/coins/economy">经济透明度</Link></div>}><p className="text-sm leading-relaxed opacity-75">金币不可购买、提现或兑换法币，也不赋予治理票权。所有变动都进入不可变双重记账子账本。</p></Panel><Panel className="mt-4" title="本周状态"><ProgressBar value={42} max={60} label="个人系统奖励额度" /><p className="mt-3 text-sm opacity-65">已获得 42，剩余 18；周一重置奖励额度，不清空余额。</p></Panel></>;
+  if (path.startsWith("/journey") || path.startsWith("/quests") || path.startsWith("/seasons") || path.startsWith("/play") || ["/me/progress", "/me/contributions", "/me/collection"].includes(path)) return <><Panel title="健康参与" footer={<Link className="link text-sm" href="/settings/journey">旅程与休息设置</Link>}><p className="text-sm leading-relaxed opacity-75">每周最多激活 3 个任务。没有签到断裂、掉级或过期未领损失，离线不会扣除进度。</p></Panel><Panel className="mt-4" title="本周旅程"><ProgressBar value={4} max={7} label="完成节点" /><p className="mt-3 text-sm opacity-65">再完成 3 个不同类型的真实贡献，即可生成私人周复盘。</p></Panel></>;
+  if (path.startsWith("/nodes/")) {
+    const [, , parentSlug, childSlug] = path.split("/"); const parent = nodes.find((node) => node.slug === parentSlug); const child = parent?.children.find((item) => item.slug === childSlug);
+    if (parent) return <Panel title={child ? `${parent.name} / ${child.name}规则` : `${parent.name}规则`} footer={<Link className="link text-sm" href="/nodes">查看全部节点</Link>}><p className="leading-relaxed">{parent.rule}</p>{child ? <p className="mt-3 border-t-2 border-base-content/20 pt-3"><strong>子节点补充：</strong>{child.rule}</p> : null}<div className="mt-4 flex items-center justify-between text-sm"><span>{child ? `${child.followerCount} 人直接关注` : `${parent.followerCount} 人关注`}</span><button className="btn btn-sm">关注节点</button></div></Panel>;
+  }
+  return <><AccountRail />{path === "/feed" ? <Panel className="mt-4" title="内容如何组织" footer={<Link className="link text-sm font-semibold" href="/nodes">了解全部 {nodes.length} 个一级节点</Link>}><p className="text-sm leading-relaxed opacity-75"><strong>一级节点</strong>划定长期讨论空间，<strong>子节点</strong>细分稳定主题，<strong>标签</strong>描述跨节点话题。先查看两级规则，再决定关注或发布。</p></Panel> : null}</>;
 }
 
 export function SiteShell({ path, children }: { path: string; children: React.ReactNode }) {
-  return (
-    <div id="app" aria-live="polite">
-      <div className="drawer">
-        <div className="drawer-content min-h-screen">
-          <header className="sticky top-0 z-30 border-b-2 border-base-content/20 bg-base-100">
-            <div className="navbar mx-auto max-w-7xl px-3 sm:px-5">
-              <div className="navbar-start">
-                <details className="dropdown lg:hidden">
-                  <summary className="btn btn-ghost btn-square" aria-label="打开导航">☰</summary>
-                  <ul className="menu dropdown-content z-30 mt-2 w-56 border-2 border-base-content/20 bg-base-100 p-2">
-                    {navigation.map(([label, href]) => <li key={href}><Link href={href}>{label}</Link></li>)}
-                  </ul>
-                </details>
-                <Link className="text-2xl font-black" href="/feed">X2Post</Link>
-              </div>
-              <nav className="navbar-center hidden lg:block" aria-label="主导航">
-                <ul className="menu menu-horizontal gap-1">
-                  {navigation.map(([label, href]) => <li key={href}><Link className={isActive(path, href) ? "menu-active" : ""} href={href}>{label}</Link></li>)}
-                </ul>
-              </nav>
-              <div className="navbar-end gap-2">
-                <Link className="btn btn-primary hidden sm:inline-flex" href="/quick-compose">轻发布</Link>
-                <ThemeToggle />
-                <Link className="btn btn-ghost" href="/me">林默</Link>
-              </div>
-            </div>
-          </header>
-          <div className="mx-auto grid max-w-7xl grid-cols-1 gap-5 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:px-6 lg:py-8">
-            <main id="main-content" className="min-w-0">{children}</main>
-            <aside className="min-w-0" aria-label="页面辅助信息">
-              <section className="overflow-hidden rounded-box border-2 border-base-content/20">
-                <header className="border-b-2 border-base-content/20 px-4 py-3"><h2 className="text-lg font-bold">我的 X2Post</h2></header>
-                <div className="p-5"><div className="flex items-center gap-3"><Avatar name="林默" image="user-linmo" /><div><Link className="font-bold" href="/me">林默</Link><p className="text-sm opacity-65">产品设计 · 上海</p></div></div></div>
-              </section>
-            </aside>
-          </div>
-          <footer className="mt-10 border-t-2 border-base-content/20"><div className="mx-auto max-w-7xl px-5 py-6 text-sm opacity-70">© 2026 X2Post · 认真表达，友善回应</div></footer>
-        </div>
-      </div>
-    </div>
-  );
+  const auth = ["/login", "/register", "/verify-email", "/forgot-password", "/reset-password", "/auth/login", "/auth/register", "/auth/verify", "/auth/forgot", "/auth/reset", "/auth/recover-task", "/verify-email/result"].includes(path);
+  if (auth) return <main id="main-content" className="mx-auto flex min-h-screen max-w-md items-center px-4 py-10">{children}</main>;
+  return <div id="app"><div className="drawer"><div className="drawer-content min-h-screen"><header className="sticky top-0 z-30 border-b-2 border-base-content/20 bg-base-100"><div className="navbar mx-auto max-w-7xl px-3 sm:px-5"><div className="navbar-start"><details className="dropdown lg:hidden"><summary className="btn btn-ghost btn-square" aria-label="打开导航">☰</summary><ul className="menu dropdown-content z-30 mt-2 w-64 border-2 border-base-content/20 bg-base-100 p-2"><li className="menu-title">浏览 X2Post</li>{navigation.map(([label, href]) => <li key={href}><Link className={isActive(path, href) ? "menu-active" : ""} href={href}>{label}</Link></li>)}<li className="menu-title mt-3">我的</li><li><Link href="/bookmarks">收藏</Link></li><li><Link href="/notifications">通知</Link></li><li><Link href="/settings/profile">设置</Link></li></ul></details><Link className="text-2xl font-black" href="/feed" aria-label="X2Post 首页">X2Post</Link></div><nav className="navbar-center hidden lg:block" aria-label="主导航"><ul className="menu menu-horizontal gap-1">{navigation.map(([label, href]) => <li key={href}><Link className={isActive(path, href) ? "menu-active" : ""} href={href}>{label}</Link></li>)}</ul></nav><div className="navbar-end gap-1"><Link className="btn btn-primary hidden sm:inline-flex" href="/quick-compose">轻发布</Link><ThemeToggle /><UserMenu /></div></div></header><div className={`mx-auto grid max-w-7xl grid-cols-1 gap-5 px-4 py-6 lg:px-6 lg:py-8 ${path === "/quick-compose" ? "" : "lg:grid-cols-[minmax(0,1fr)_320px]"}`}><main id="main-content" className="min-w-0">{children}</main>{path === "/quick-compose" ? null : <aside className="min-w-0" aria-label="页面辅助信息"><SideRail path={path} /></aside>}</div><footer className="mt-10 border-t-2 border-base-content/20"><div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-6 text-sm opacity-70 sm:flex-row sm:items-center sm:justify-between"><p>© 2026 X2Post · 认真表达，友善回应</p><nav className="flex gap-4" aria-label="页脚"><Link className="link" href="/nodes">社区节点</Link><Link className="link" href="/appeals">申诉</Link><Link className="link" href="/moderation/cases">治理透明度</Link></nav></div></footer></div></div></div>;
 }

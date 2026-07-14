@@ -36,3 +36,7 @@ export function DataTable({ headers, rows }: { headers: string[]; rows: ReactNod
 export function EmptyState({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
   return <div className="rounded-box border-2 border-dashed border-base-content/25 p-8 text-center"><h2 className="text-xl font-bold">{title}</h2><p className="mx-auto mt-2 max-w-lg opacity-65">{description}</p>{action ? <div className="mt-4">{action}</div> : null}</div>;
 }
+
+export function Pagination() {
+  return <nav aria-label="分页" className="join"><button className="btn join-item" type="button" disabled>上一页</button><button className="btn btn-active join-item" type="button" aria-current="page">1</button><button className="btn join-item" type="button">2</button><button className="btn join-item" type="button">下一页</button></nav>;
+}

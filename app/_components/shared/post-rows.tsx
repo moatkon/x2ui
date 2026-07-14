@@ -4,10 +4,10 @@ import { Avatar } from "./avatar";
 
 type Post = (typeof posts)[number];
 
-export function PostRows({ filter }: { filter?: (post: Post) => boolean }) {
+export function PostRows({ filter, framed = true }: { filter?: (post: Post) => boolean; framed?: boolean }) {
   const list = filter ? posts.filter(filter) : posts;
   return (
-    <ul className="list x2-list overflow-hidden rounded-box border-2 border-base-content/20">
+    <ul className={`list x2-list overflow-hidden ${framed ? "rounded-box border-2 border-base-content/20" : ""}`}>
       {list.map((post) => (
         <li className="list-row rounded-none px-4 py-4 sm:px-5" key={post.id}>
           <Avatar name={post.author.displayName} image={`user-${post.author.userName}`} />
