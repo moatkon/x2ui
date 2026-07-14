@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="lofi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="X2Post 内容优先的轻量社区静态交互原型" />
+    <meta name="theme-color" content="#f8f7f2" />
+    <link rel="canonical" href="https://x2post.com/" />
+    <meta property="og:site_name" content="X2Post" />
+    <meta property="og:title" content="X2Post · 轻量社区" />
+    <meta property="og:type" content="website" />
+    <title>X2Post · 轻量社区</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+      :root { --border: 2px; --depth: 0; --noise: 0; }
+      * { box-shadow: none !important; }
+      html { scroll-behavior: smooth; }
+      body { min-width: 320px; }
+      :focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+      .markdown-body h2 { margin-top: 1.5rem; margin-bottom: .5rem; font-size: 1.25rem; font-weight: 700; }
+      .markdown-body p { margin: .75rem 0; line-height: 1.8; }
+      .markdown-body ul { margin: .75rem 0; list-style: disc; padding-left: 1.5rem; }
+      .markdown-body code { background: color-mix(in oklch, currentColor 8%, transparent); padding: .1rem .35rem; border-radius: .2rem; }
+      .x2-list > .list-row:not(:last-child) { border-bottom: 2px solid color-mix(in oklch, var(--color-base-content) 20%, transparent) !important; }
+      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
+    </style>
+  </head>
+  <body>
+    <a href="#main-content" class="btn btn-sm fixed left-3 top-3 z-50 -translate-y-24 focus:translate-y-0">跳到主要内容</a>
+    <div id="app" aria-live="polite"></div>
+    <div id="toast-region" class="toast toast-end toast-bottom z-50" aria-live="polite" aria-atomic="true"></div>
+    <dialog id="app-dialog" class="modal">
+      <div class="modal-box border-2 border-base-content/20">
+        <div id="dialog-content"></div>
+        <form method="dialog" class="modal-action"><button class="btn">关闭</button></form>
+      </div>
+      <form method="dialog" class="modal-backdrop"><button aria-label="关闭对话框">关闭</button></form>
+    </dialog>
+    <script src="assets/ui.js?v=20260714-quick-to-long"></script>
+    <script src="assets/app.js?v=20260714-quick-to-long"></script>
+  </body>
+</html>

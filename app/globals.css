@@ -1,0 +1,66 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: lofi --default, night --prefersdark;
+}
+@source "../public/assets/app.js";
+@source "../public/assets/ui.js";
+
+:root {
+  --border: 2px;
+  --depth: 0;
+  --noise: 0;
+}
+
+* {
+  box-shadow: none !important;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-width: 320px;
+}
+
+:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 3px;
+}
+
+.markdown-body h2 {
+  margin-block: 1.5rem 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.markdown-body p {
+  margin: 0.75rem 0;
+  line-height: 1.8;
+}
+
+.markdown-body ul {
+  margin: 0.75rem 0;
+  list-style: disc;
+  padding-left: 1.5rem;
+}
+
+.markdown-body code {
+  background: color-mix(in oklch, currentColor 8%, transparent);
+  border-radius: 0.2rem;
+  padding: 0.1rem 0.35rem;
+}
+
+.x2-list > .list-row:not(:last-child) {
+  border-bottom: 2px solid color-mix(in oklch, var(--color-base-content) 20%, transparent) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}
