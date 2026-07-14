@@ -2,8 +2,7 @@
 @plugin "daisyui" {
   themes: lofi --default, night --prefersdark;
 }
-@source "../public/assets/app.js";
-@source "../public/assets/ui.js";
+@source "../public/assets/**/*.js";
 
 :root {
   --border: 2px;

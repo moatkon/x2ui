@@ -24,3 +24,5 @@ npm start
 - `/api/v1/*` 提供按 `docs/prototype-api-contracts.md` 组织的 mock Route Handler，覆盖公开查询和主要写交互，并模拟游标、`Idempotency-Key`、`If-Match` 与标准错误结构。
 - `robots.txt` 与 `sitemap.xml` 自动生成，公开页面提供 canonical、description 与 Open Graph metadata。
 - 页面视觉和交互复用原型的 daisyUI 组件层，并已从 hash router 迁移到 pathname。
+- React 页面按领域拆分在 `app/_components/pages/`，公共壳与列表组件位于 `app/_components/`；catch-all 页面仅负责 metadata、校验和分发。
+- 浏览器交互脚本拆分为 core、community、account、coin、journey 与 runtime，站内导航通过 History API 原地切换，不再整页刷新闪动。

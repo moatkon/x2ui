@@ -23,8 +23,17 @@ export function PrototypeRuntime() {
       document.body.appendChild(script);
     });
 
-    void load("/assets/ui.js")
-      .then(() => load("/assets/app.js"))
+    const scripts = [
+      "/assets/ui.js",
+      "/assets/app-core.js",
+      "/assets/pages/community.js",
+      "/assets/pages/account.js",
+      "/assets/pages/coin.js",
+      "/assets/pages/journey.js",
+      "/assets/app-runtime.js",
+    ];
+
+    void scripts.reduce((pending, src) => pending.then(() => load(src)), Promise.resolve())
       .catch((error) => {
         console.error("X2Post 原型交互层加载失败", error);
       });
