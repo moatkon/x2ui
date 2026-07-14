@@ -7,6 +7,11 @@ import { SearchContent } from "./pages/search-content";
 import { TagsContent } from "./pages/tags-content";
 import { CoinEconomyContent, CoinRulesContent } from "./pages/coin-public-content";
 import { SeasonsContent } from "./pages/seasons-content";
+import { AccountRouteContent } from "./pages/account-content";
+import { CoinRouteContent } from "./pages/coin-content";
+import { JourneyRouteContent } from "./pages/journey-content";
+import { ModerationRouteContent } from "./pages/moderation-content";
+import { PrototypeStatesContent } from "./pages/prototype-states-content";
 
 export function RouteContent({ path, query }: { path: string; query: QueryParams }) {
   if (path === "/feed") return <FeedContent query={query} />;
@@ -19,5 +24,9 @@ export function RouteContent({ path, query }: { path: string; query: QueryParams
   if (path === "/coins/rules") return <CoinRulesContent />;
   if (path === "/coins/economy") return <CoinEconomyContent />;
   if (path === "/seasons" || path.startsWith("/seasons/")) return <SeasonsContent path={path} />;
-  return <div className="skeleton h-80 w-full" aria-label="正在加载交互页面" />;
+  if (path === "/coins" || path.startsWith("/coins/") || path === "/settings/coins" || path.startsWith("/moderation/coins") || path.startsWith("/admin/coins")) return <CoinRouteContent path={path} />;
+  if (path === "/journey" || path.startsWith("/journey/") || path === "/quests" || path.startsWith("/quests/") || path === "/play" || path.startsWith("/play/") || path === "/me/progress" || path === "/me/contributions" || path === "/me/collection" || path === "/settings/journey") return <JourneyRouteContent path={path} />;
+  if (path === "/moderation" || path.startsWith("/moderation/")) return <ModerationRouteContent path={path} />;
+  if (path === "/prototype/states") return <PrototypeStatesContent />;
+  return <AccountRouteContent path={path} query={query} />;
 }

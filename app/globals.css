@@ -2,8 +2,6 @@
 @plugin "daisyui" {
   themes: lofi --default, night --prefersdark;
 }
-@source "../public/assets/**/*.js";
-
 :root {
   --border: 2px;
   --depth: 0;

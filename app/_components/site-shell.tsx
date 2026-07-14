@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ThemeToggle } from "./client/demo-actions";
 import { Avatar } from "./shared/avatar";
 
 const navigation = [
@@ -33,6 +34,7 @@ export function SiteShell({ path, children }: { path: string; children: React.Re
               </nav>
               <div className="navbar-end gap-2">
                 <Link className="btn btn-primary hidden sm:inline-flex" href="/quick-compose">轻发布</Link>
+                <ThemeToggle />
                 <Link className="btn btn-ghost" href="/me">林默</Link>
               </div>
             </div>
