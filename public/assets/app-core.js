@@ -92,7 +92,7 @@
     const child = childFromSlug(parent, rawChild);
     return { parent, child, rawParent, rawChild, invalidParent: Boolean(rawParent && !parent), invalidChild: Boolean(rawChild && !child) };
   };
-  const nodeMenuItem = ({ label, href, current = false }) => `<li><a class="min-h-11 whitespace-normal rounded-field px-3 py-2 text-sm font-semibold leading-snug focus-visible:outline-2 focus-visible:outline-offset-2 ${current ? "bg-neutral text-neutral-content" : ""}" href="${href}" ${current ? 'aria-current="page"' : ""}>${U.esc(label)}</a></li>`;
+  const nodeMenuItem = ({ label, href, current = false }) => `<li><a class="min-h-11 content-center whitespace-normal rounded-field px-3 py-2 text-sm font-semibold leading-snug focus-visible:outline-2 focus-visible:outline-offset-2 ${current ? "bg-neutral text-neutral-content" : ""}" href="${href}" ${current ? 'aria-current="page"' : ""}>${U.esc(label)}</a></li>`;
   const nodeBrowseControl = (activeParent, activeChild) => {
     const items = [{ slug: "", name: "全部" }, ...nodes];
     const primaryMenu = `<div class="px-2 py-2 sm:px-4"><p id="primary-node-nav-title" class="px-3 pb-1 text-sm font-bold">按一级节点浏览</p><nav class="w-full" aria-labelledby="primary-node-nav-title"><ul class="menu menu-horizontal flex w-full flex-wrap gap-1 px-0">${items.map(item => nodeMenuItem({ label: item.name, href: item.slug ? `/feed?node=${item.slug}` : "/feed", current: item.slug === (activeParent?.slug || "") })).join("")}</ul></nav></div>`;
