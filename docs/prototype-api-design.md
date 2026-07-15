@@ -1,11 +1,11 @@
-# X2Post 原型功能与领域 API 设计
+# X2Post 当前网站功能与领域 API 设计
 
-> 状态：API 设计基线（依据 `prototype/assets/app.js`，2026-07-14）  
-> 目标：覆盖当前原型全部业务页面；API 单一职责、读写分离、领域边界明确。本文不是把页面后端化为“大页面 API”，也不承诺实现尚未评审的金币/旅程能力。
+> 状态：领域设计基线（依据当前 `app/` 页面、`app/_components/pages/` 交互、`app/api/v1/` Route Handler 与 `lib/mock-*`，2026-07-15）
+> 目标：覆盖当前 Next.js 网站全部业务页面；API 单一职责、读写分离、领域边界明确。字段、格式、必填性和逐字段验证以 `docs/prototype-api-contracts.md` 为唯一契约。
 
 ## 1. 结论与现状差距
 
-原型已包含基础社区、认证、账户安全、治理、金币子账和社区旅程六大产品面。生产 API 应按领域资源与命令建模，不应按页面做万能聚合写接口。页面可由 BFF/前端并行组合多个查询，但领域服务各自拥有事实源。
+当前网站已包含基础社区、认证、账户安全、治理、金币子账和社区旅程六大产品面。生产 API 应按领域资源与命令建模，不应按页面做万能聚合写接口。页面可由 BFF/前端并行组合多个查询，但领域服务各自拥有事实源。
 
 当前 `openapi.json` 是旧后端起点，而不是目标契约。它只有 **11 个 path、11 个 operation**：评论创建/列表，帖子创建/详情/列表，用户详情/帖子/评论，以及登录/登出/注册。它还缺少 `/api/v1`、节点、草稿、互动、搜索、通知、设置、设备会话、举报/申诉/治理、金币、旅程，以及本文规定的幂等、游标、权限和并发语义。不能在这 11 个旧接口上继续堆可选字段或 `actionType`。
 
@@ -28,7 +28,7 @@
 | `/nodes` | 两层节点目录、规则、统计 | N01 |
 | `/nodes/{parent}` | 父节点聚合、子节点列表、规则、关注 | N02, D01, R05–R06 |
 | `/nodes/{parent}/{child}` | 子节点详情、同级切换、帖子、直接关注 | N03, D01, R05–R06 |
-| `/nodes/{slug}/project` | 节点公开项目、任务、加入申请 | J14–J17 |
+| `/nodes/{parent}/project` | 节点公开项目、任务、加入申请 | J14–J17 |
 | `/posts/{postId}` | 不可变正文、评论/回复、反应、收藏、感谢、悬赏、举报 | C06–C10b, R01–R04, K05q–K07, S01 |
 | `/search?q=&type=` | 帖子/用户/节点/标签独立搜索、两层节点过滤、排序 | D03–D06 |
 | `/tags`, `/tags/{slug}` | 标签目录、跨节点帖子 | D07–D08 |
@@ -83,7 +83,7 @@
 | `/journey`, `/play` | 共建大厅、摘要、当前旅程、推荐任务 | J01–J03 |
 | `/journey/onboarding` | 可选贡献偏好 | J04–J05 |
 | `/quests`, `/play/quests` | 任务板筛选 | J02 |
-| `/quests/{id}`, `/play/quests/{id}` | 任务详情、开始/继续/暂停/替换 | J03, J06–J09 |
+| `/quests/{questId}`, `/play/quests/{questId}` | 任务详情、开始/继续/暂停/替换 | J03, J06–J09 |
 | `/me/progress`, `/play/journey` | 成长路径、周记录 | J10 |
 | `/me/contributions` | 可追溯贡献与质量状态 | J11–J12 |
 | `/me/collection` | 非交易收藏、逐项展示设置 | J13a, J13 |
@@ -166,8 +166,8 @@
 | ID | Method / Path | 单一职责与关键输入 → 输出 | 权限 | 语义 |
 |---|---|---|---|---|
 | N01 | `GET /nodes` | 两层节点目录、规则版本、统计 | 公 | R；无写 API |
-| N02 | `GET /nodes/{parentSlug}` | 一级节点、子节点摘要、发帖能力 | 公 | R |
-| N03 | `GET /nodes/{parentSlug}/children/{childSlug}` | 二级节点详情与继承规则 | 公 | R；严格验证父子归属 |
+| N02 | `GET /nodes/{slug}` | 一级节点、子节点摘要、发帖能力 | 公 | R |
+| N03 | `GET /nodes/{slug}/children/{childSlug}` | 二级节点详情与继承规则 | 公 | R；严格验证父子归属 |
 | C01 | `POST /drafts` | 创建空/带入轻发布内容的草稿 → draft+ETag | 本人 | I |
 | C02 | `GET /drafts` | 本人草稿列表 | 本人 | R、cursor |
 | C03 | `GET /drafts/{draftId}` / `PATCH /drafts/{draftId}` | 读取；修改标题/正文/节点/标签/附件引用 | 本人 | R/V；仅未发布草稿 |
@@ -201,8 +201,8 @@
 |---|---|---|---|---|
 | R01 | `PUT /users/me/bookmarks/{postId}` | 建立一个收藏关系 → viewerState/count | 登 | S |
 | R02 | `DELETE /users/me/bookmarks/{postId}` | 删除一个收藏关系 | 登 | S |
-| R03 | `PUT /posts/{postId}/reactions/{type}` / `DELETE ...` | 设置/撤销一种帖子反应 | 登 | S；type 枚举 |
-| R04 | `PUT /comments/{commentId}/reactions/{type}` / `DELETE ...` | 设置/撤销一种评论反应 | 登 | S |
+| R03 | `PUT /posts/{postId}/reactions/{reactionType}` / `DELETE ...` | 设置/撤销一种帖子反应 | 登 | S；type 枚举 |
+| R04 | `PUT /comments/{commentId}/reactions/{reactionType}` / `DELETE ...` | 设置/撤销一种评论反应 | 登 | S |
 | R05 | `PUT /users/me/followed-nodes/{nodeId}` | 关注父或子节点 | 登 | S；父关注在读模型中覆盖子节点 |
 | R06 | `DELETE /users/me/followed-nodes/{nodeId}` | 取消指定节点关注 | 登 | S；不隐式删其他边 |
 | R07 | `PUT /users/me/followed-users/{userName}` | 关注用户 | 登 | S；禁止自关注/被屏蔽关系 |
@@ -404,8 +404,8 @@ M06–M09 每次成功都在同一事务或可靠 outbox 中生成不可变 Audi
 
 ## 9. 验证清单
 
-- `prototype/assets/app.js` 的 `resolve(route)` 每个业务分支均在第 2 节出现；别名已合并标注。
-- 所有 `data-action` 中的真实写动作已映射到独立命令；主题、弹窗、输入模板、重试 Toast 等纯 UI 动作未伪造 API。
+- `app/**/page.tsx` 的每个业务路由均在第 2 节出现；别名已合并标注。
+- `app/_components/pages/*.tsx`、`app/_components/client/*.tsx` 中的真实读取、表单和按钮写动作均已映射到独立命令；主题、菜单、弹窗、输入模板、重试 Toast 等纯 UI 动作未伪造 API。
 - API 目录中无 `/actions`、通用 `/settings` PATCH、Controller 万能命令或客户端 `/settle`。
 - Node 无写 API；Post/Comment 无 PATCH/DELETE；治理与金币均保留不可变历史。
 - 写接口已标注 I/V/S/L 并发语义，读接口已标注权限和分页方向。
