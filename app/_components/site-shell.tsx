@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { ThemeToggle } from "./client/demo-actions";
-import { RouteFrame, RouteNavigation } from "./client/route-chrome";
+import { ThemeToggle } from "./client/theme-toggle";
+import { DesktopNavigation, MobileNavigation } from "./client/active-navigation";
+import { RouteFrame } from "./client/route-frame";
 import { Avatar } from "./shared/avatar";
+import { AccountRail, CoinRail, ComposeRail, JourneyRail, NodeRail } from "./site-rails";
 
 function UserMenu() {
   return (
@@ -38,11 +40,11 @@ export function SiteShell({ children }: Readonly<{ children: React.ReactNode }>)
       <header className="sticky top-0 z-30 border-b-2 border-base-content/20 bg-base-100">
         <div className="navbar mx-auto max-w-7xl px-3 sm:px-5">
           <div className="navbar-start">
-            <RouteNavigation mobile />
+            <MobileNavigation />
             <Link className="text-2xl font-black" href="/" aria-label="X2Post 首页">X2Post</Link>
           </div>
           <nav className="navbar-center hidden lg:block" aria-label="主导航">
-            <RouteNavigation />
+            <DesktopNavigation />
           </nav>
           <div className="navbar-end gap-1">
             <Link className="btn btn-ghost btn-square" href="/notifications" aria-label="通知">◉</Link>
@@ -51,7 +53,7 @@ export function SiteShell({ children }: Readonly<{ children: React.ReactNode }>)
           </div>
         </div>
       </header>
-      <RouteFrame>{children}</RouteFrame>
+      <RouteFrame rails={{ account: <AccountRail />, compose: <ComposeRail />, coins: <CoinRail />, journey: <JourneyRail />, nodes: <NodeRail /> }}>{children}</RouteFrame>
       <footer className="border-t-2 border-base-content/20 bg-base-100">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 text-sm opacity-70 sm:flex-row sm:items-center sm:justify-between">
           <p>© 2026 X2Post · 内容优先、公开可读、秩序透明</p>

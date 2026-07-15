@@ -1,3 +1,3 @@
-import { AccountRouteContent } from "@/app/_components/pages/account-content";
+import { AccountAuthPage } from "@/app/_components/pages/account-content";
 export const metadata = { title: "注册" };
-export default function RegisterPage() { return <AccountRouteContent path="/register" query={{}} />; }
+export default function RegisterPage() { return <AccountAuthPage type="register" />; }

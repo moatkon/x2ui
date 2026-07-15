@@ -25,6 +25,7 @@ export type MockApiState = {
   commentsByPost: Map<string, StoredMockComment[]>;
   idempotency: Map<string, IdempotencyRecord>;
   nextCommentNumber: number;
+  rateLimits: Map<string, { count: number; resetAt: number }>;
 };
 
 const initialComments: StoredMockComment[] = [
@@ -54,20 +55,18 @@ const initialComments: StoredMockComment[] = [
   },
 ];
 
-const globalMock = globalThis as typeof globalThis & {
-  __x2postMockApiState?: MockApiState;
+const mockApiState: MockApiState = {
+  bookmarks: new Set<string>(),
+  postReactions: new Map<string, Set<string>>(),
+  commentReactions: new Map<string, Set<string>>(),
+  commentsByPost: new Map<string, StoredMockComment[]>([["immutable-content", [...initialComments]]]),
+  idempotency: new Map<string, IdempotencyRecord>(),
+  nextCommentNumber: 3,
+  rateLimits: new Map<string, { count: number; resetAt: number }>(),
 };
 
 export function getMockApiState(): MockApiState {
-  globalMock.__x2postMockApiState ??= {
-    bookmarks: new Set<string>(),
-    postReactions: new Map<string, Set<string>>(),
-    commentReactions: new Map<string, Set<string>>(),
-    commentsByPost: new Map<string, StoredMockComment[]>([["immutable-content", [...initialComments]]]),
-    idempotency: new Map<string, IdempotencyRecord>(),
-    nextCommentNumber: 3,
-  };
-  return globalMock.__x2postMockApiState;
+  return mockApiState;
 }
 
 export function stableStringify(value: unknown): string {

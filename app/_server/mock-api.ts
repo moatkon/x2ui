@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { currentUser, cursorPage, nodes, posts } from "@/lib/mock-data";
 import { getMockApiState, stableStringify, type StoredMockComment } from "@/lib/mock-api-state";
 import { createMockSession, SESSION_COOKIE, verifyMockSession } from "@/lib/mock-session";
+import { parseJsonBody, validateBody } from "./mock-validation";
 
 const RULE_VERSION = "2026.07";
 const now = () => new Date().toISOString();
@@ -33,6 +34,8 @@ function problem(
     404: "Resource Not Found",
     409: "Conflict",
     412: "Precondition Failed",
+    413: "Payload Too Large",
+    415: "Unsupported Media Type",
     422: "Validation Failed",
     429: "Rate Limited",
   };
@@ -86,7 +89,6 @@ function nodeDetail(parent: (typeof nodes)[number]) {
     ruleText: parent.rule,
     children: parent.children.map((child) => nodeSummary(child, parent.slug)),
     inheritance: { parentFollowCoversChildren: true, childFollowCoversParent: false },
-    viewerState: { directlyFollowing: false, coveredByParent: false },
   };
 }
 
@@ -96,7 +98,6 @@ function childNodeDetail(parent: (typeof nodes)[number], child: (typeof nodes)[n
     ruleText: child.rule,
     children: [],
     inheritance: { parentFollowCoversChildren: true, childFollowCoversParent: false },
-    viewerState: { directlyFollowing: false, coveredByParent: false },
   };
 }
 
@@ -125,7 +126,7 @@ function markdownHtml(value: string) {
   return `<p>${escapeHtml(value).replaceAll("\n", "<br />")}</p>`;
 }
 
-function postSummary(post: (typeof posts)[number]) {
+function postSummary(post: (typeof posts)[number], includeViewer = false) {
   const state = getMockApiState();
   const reactions = state.postReactions.get(post.id) ?? new Set<string>();
   const comments = state.commentsByPost.get(post.id) ?? [];
@@ -147,17 +148,16 @@ function postSummary(post: (typeof posts)[number]) {
     counts: {
       comments: comments.length || post.commentCount,
       reactions: post.reactionCount + (reactions.has("AGREE") ? 1 : 0),
-      bookmarks: bookmarked ? 1 : 0,
+      bookmarks: 0,
     },
     status: "PUBLISHED",
-    viewerState: { bookmarked, reactions: [...reactions] },
-    permissions: { canComment: true, canReport: true },
+    ...(includeViewer ? { viewerState: { bookmarked, reactions: [...reactions] }, permissions: { canComment: true, canReport: true } } : {}),
   };
 }
 
-function postDetail(post: (typeof posts)[number]) {
+function postDetail(post: (typeof posts)[number], includeViewer = false) {
   return {
-    post: postSummary(post),
+    post: postSummary(post, includeViewer),
     bodyMarkdown: post.bodyMarkdown,
     bodyHtml: markdownHtml(post.bodyMarkdown),
     commentLock: { locked: false, reasonCategory: null },
@@ -167,7 +167,7 @@ function postDetail(post: (typeof posts)[number]) {
   };
 }
 
-function commentDto(comment: StoredMockComment) {
+function commentDto(comment: StoredMockComment, includeViewer = false) {
   const reactions = getMockApiState().commentReactions.get(comment.id) ?? new Set<string>();
   return {
     id: comment.id,
@@ -182,8 +182,7 @@ function commentDto(comment: StoredMockComment) {
     replyCount: comment.replyCount,
     reactionCount: comment.reactionCount + (reactions.has("AGREE") ? 1 : 0),
     status: "PUBLISHED",
-    viewerState: { reactions: [...reactions] },
-    permissions: { canReply: true, canReport: true },
+    ...(includeViewer ? { viewerState: { reactions: [...reactions] }, permissions: { canReply: true, canReport: true } } : {}),
   };
 }
 
@@ -195,6 +194,9 @@ async function getMockResponse(request: NextRequest, segments: string[]) {
   const path = `/${segments.join("/")}`;
   const query = request.nextUrl.searchParams;
   const state = getMockApiState();
+  const session = await verifyMockSession(request.cookies.get(SESSION_COOKIE)?.value);
+  const privatePaths = ["/feed/following", "/users/me/summary", "/users/me/bookmarks", "/users/me/coin-wallet", "/notifications", "/auth/sessions"];
+  if (privatePaths.includes(path) && !session) return problem(request, 401, "AUTH_REQUIRED", "请先登录后继续");
 
   if (path === "/nodes") return json({ items: nodes.map(nodeDetail), taxonomyVersion: "2026-07-14" });
   if (segments[0] === "nodes" && segments.length === 2) {
@@ -224,9 +226,9 @@ async function getMockResponse(request: NextRequest, segments: string[]) {
           displayName: child ? `${parent.name} / ${child.name}` : parent.name,
         }
       : null;
-    return json({ page: cursorPage(visible.map(postSummary)), appliedNodePath, recovery, taxonomyVersion: "2026-07-14" });
+    return json({ page: cursorPage(visible.map((post) => postSummary(post))), appliedNodePath, recovery, taxonomyVersion: "2026-07-14" });
   }
-  if (path === "/feed/following") return json(cursorPage(posts.slice(1).map(postSummary)));
+  if (path === "/feed/following") return json(cursorPage(posts.slice(1).map((post) => postSummary(post, true))));
   if (segments[0] === "posts" && segments.length === 2) {
     const post = posts.find((item) => item.id === segments[1]);
     return post ? json(postDetail(post)) : problem(request, 404, "RESOURCE_NOT_FOUND", "内容不存在或当前不可见");
@@ -234,12 +236,12 @@ async function getMockResponse(request: NextRequest, segments: string[]) {
   if (segments[0] === "posts" && segments[2] === "comments" && segments.length === 3) {
     const post = posts.find((item) => item.id === segments[1]);
     if (!post) return problem(request, 404, "RESOURCE_NOT_FOUND", "内容不存在或当前不可见");
-    return json(cursorPage((state.commentsByPost.get(post.id) ?? []).map(commentDto)));
+    return json(cursorPage((state.commentsByPost.get(post.id) ?? []).map((comment) => commentDto(comment))));
   }
   if (path === "/search/posts") {
     const term = query.get("q")?.toLocaleLowerCase() ?? "";
     const items = posts.filter((post) => `${post.title}${post.excerpt}${post.tags.join("")}`.toLocaleLowerCase().includes(term));
-    return json(cursorPage(items.map(postSummary)));
+    return json(cursorPage(items.map((post) => postSummary(post))));
   }
   if (path === "/search/users") return json(cursorPage([publicUser(currentUser)]));
   if (path === "/search/nodes") return json({ items: allNodeSummaries() });
@@ -247,17 +249,15 @@ async function getMockResponse(request: NextRequest, segments: string[]) {
   if (path === "/tags") return json(cursorPage([...new Set(posts.flatMap((post) => post.tags))].map((label) => ({ slug: encodeURIComponent(label), label, publicPostCount: posts.filter((post) => post.tags.includes(label)).length }))));
   if (segments[0] === "tags" && segments[2] === "posts") {
     const label = decodeURIComponent(segments[1]);
-    return json({ tag: { slug: segments[1], label, publicPostCount: posts.filter((post) => post.tags.includes(label)).length }, page: cursorPage(posts.filter((post) => post.tags.includes(label)).map(postSummary)) });
+    return json({ tag: { slug: segments[1], label, publicPostCount: posts.filter((post) => post.tags.includes(label)).length }, page: cursorPage(posts.filter((post) => post.tags.includes(label)).map((post) => postSummary(post))) });
   }
   if (segments[0] === "users" && segments.length === 2) {
     return segments[1] === currentUser.userName
-      ? json({ user: publicUser(currentUser), bio: currentUser.bio, location: currentUser.location, joinedAt: "2024-08-01T00:00:00Z", stats: currentUser.stats, viewerState: { following: false, blocked: false }, permissions: { canFollow: false, canBlock: false, canReport: false } })
+      ? json({ user: publicUser(currentUser), bio: currentUser.bio, location: currentUser.location, joinedAt: "2024-08-01T00:00:00Z", stats: currentUser.stats })
       : problem(request, 404, "RESOURCE_NOT_FOUND", "用户不存在或资料不可见");
   }
-  const session = await verifyMockSession(request.cookies.get(SESSION_COOKIE)?.value);
-  if (["/users/me/summary", "/users/me/bookmarks", "/users/me/coin-wallet", "/notifications", "/auth/sessions"].includes(path) && !session) return problem(request, 401, "AUTH_REQUIRED", "请先登录后继续");
   if (path === "/users/me/summary") return json({ user: publicUser(currentUser), emailMasked: "li•••@example.com", emailVerified: true, counts: { unreadNotifications: 1, drafts: 3, bookmarks: state.bookmarks.size, following: currentUser.stats.followingCount }, security: { activeSessions: 2, passwordChangedAt: null } });
-  if (path === "/users/me/bookmarks") return json(cursorPage(posts.filter((post) => state.bookmarks.has(post.id)).map(postSummary)));
+  if (path === "/users/me/bookmarks") return json(cursorPage(posts.filter((post) => state.bookmarks.has(post.id)).map((post) => postSummary(post, true))));
   if (path === "/users/me/coin-wallet") return json({ userId: currentUser.id, unit: "X2_COIN", balances: { available: 286, pending: 10, escrow: 50, held: 5 }, weeklyReward: { earned: 42, cap: 60, resetsAt: "2026-07-20T00:00:00Z" }, ruleVersion: RULE_VERSION, updatedAt: now() });
   if (path === "/coin-rule-versions") return json(cursorPage([{ version: RULE_VERSION, qualityRewards: [{ distinctTrustedThreshold: 3, amount: 4 }, { distinctTrustedThreshold: 8, amount: 6 }, { distinctTrustedThreshold: 20, amount: 10 }], pendingObservationSeconds: 259200, weeklyUserRewardCap: 60, thank: { cost: 2, recipientAmount: 1, sinkAmount: 1, dailyCountCap: 5 }, bounty: { amountTiers: [20, 50, 100], acceptDelaySeconds: 86400, answererSharePercent: 80, sinkPercent: 20, defaultDurationDays: 14, maxDurationDays: 30 }, effectiveAt: "2026-07-01T00:00:00Z", nonMonetaryNotice: "金币不可购买、提现、兑换法币，也不赋予曝光或治理权。" }]));
   if (segments[0] === "coin-economy" && segments[1] === "summaries" && segments[2]) return json({ period: segments[2], openingSupply: 120400, issued: 8420, sunk: 2310, closingSupply: 126510, activeWallets: 1842, dormancyRate: 0.18, reversals: 17, ruleVersion: RULE_VERSION, publishedAt: now() });
@@ -271,18 +271,63 @@ export async function handleMockGet(request: NextRequest, segments: string[]) {
   const response = await getMockResponse(request, segments);
   const path = `/${segments.join("/")}`;
   const publicCacheable = path === "/nodes" || path.startsWith("/nodes/") || path === "/feed" || path.startsWith("/search/") || path === "/tags" || path.startsWith("/tags/") || path === "/coin-rule-versions" || path.startsWith("/coin-economy/") || (path.startsWith("/posts/") && !path.endsWith("/comments")) || (path.startsWith("/users/") && !path.startsWith("/users/me"));
-  if (publicCacheable && response.ok) response.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+  if (publicCacheable && response.ok) {
+    response.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+    response.headers.set("Vary", "Accept-Encoding");
+  }
   return response;
+}
+
+function mutationOriginIsAllowed(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  const fetchSite = request.headers.get("sec-fetch-site");
+  if (!origin || fetchSite === "cross-site") return false;
+  try {
+    const originUrl = new URL(origin);
+    const expectedHost = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+    const expectedProtocol = request.headers.get("x-forwarded-proto") ?? request.nextUrl.protocol.replace(":", "");
+    return originUrl.host === expectedHost && originUrl.protocol === `${expectedProtocol}:`;
+  } catch {
+    return false;
+  }
+}
+
+function rateLimit(request: NextRequest, path: string) {
+  const state = getMockApiState();
+  const address = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "local";
+  const authPath = path.startsWith("/auth/");
+  const limit = authPath ? 10 : 60;
+  const windowMs = 60_000;
+  const key = `${address}:${path}`;
+  const currentTime = Date.now();
+  const record = state.rateLimits.get(key);
+  if (!record || record.resetAt <= currentTime) {
+    state.rateLimits.set(key, { count: 1, resetAt: currentTime + windowMs });
+    return null;
+  }
+  record.count += 1;
+  if (record.count <= limit) return null;
+  return Math.max(1, Math.ceil((record.resetAt - currentTime) / 1000));
 }
 
 export async function handleMockMutation(request: NextRequest, segments: string[], method: string) {
   const path = `/${segments.join("/")}`;
-  const rawBody: unknown = request.headers.get("content-length") === "0" ? {} : await request.json().catch(() => ({}));
-  const body = rawBody && typeof rawBody === "object" ? rawBody as Record<string, unknown> : {};
   const state = getMockApiState();
   const idempotencyKey = request.headers.get("Idempotency-Key");
   const publicAuthPaths = ["/auth/sessions", "/auth/registrations", "/auth/email-verifications", "/auth/password-reset-deliveries", "/auth/password-resets"];
+  if (!mutationOriginIsAllowed(request)) return problem(request, 403, "INVALID_REQUEST_ORIGIN", "写操作只接受同源请求");
+  const retryAfter = rateLimit(request, path);
+  if (retryAfter) {
+    const response = problem(request, 429, "RATE_LIMITED", "请求过于频繁，请稍后重试", { retryAfterSeconds: retryAfter });
+    response.headers.set("Retry-After", String(retryAfter));
+    return response;
+  }
   if (!publicAuthPaths.includes(path) && !(await verifyMockSession(request.cookies.get(SESSION_COOKIE)?.value))) return problem(request, 401, "AUTH_REQUIRED", "请先登录后继续");
+  const parsed = await parseJsonBody(request, method);
+  if (parsed.error) return problem(request, parsed.error.status, parsed.error.code, parsed.error.detail, { fieldErrors: parsed.error.fieldErrors ?? [] });
+  const body = parsed.body ?? {};
+  const fieldErrors = validateBody(path, method, body);
+  if (fieldErrors.length) return problem(request, 422, "VALIDATION_FAILED", "请求字段不符合接口契约", { fieldErrors });
   const requiresIdempotency = method === "POST" && ["/posts", "/reports", "/appeals", "/auth/sessions", "/auth/registrations", "/auth/email-verifications", "/auth/password-reset-deliveries", "/auth/password-resets"].some((route) => path === route || path.endsWith("/comments") || path.endsWith("/publications"));
 
   if (requiresIdempotency && (!idempotencyKey || idempotencyKey.length < 16 || idempotencyKey.length > 128)) {
@@ -309,7 +354,7 @@ export async function handleMockMutation(request: NextRequest, segments: string[
   if (path === "/posts" && method === "POST") {
     const createdId = `mock-post-${Date.now()}`;
     const source = { ...posts[0], id: createdId, title: "", excerpt: String(body.bodyMarkdown ?? "").slice(0, 280), bodyMarkdown: String(body.bodyMarkdown ?? ""), nodePath: { ...posts[0].nodePath }, tags: [] };
-    const responseBody = { ...postDetail(source), canonicalUrl: `${process.env.SITE_URL ?? "https://x2post.com"}/posts/${createdId}` };
+    const responseBody = { ...postDetail(source, true), canonicalUrl: `${process.env.SITE_URL ?? "https://x2post.com"}/posts/${createdId}` };
     return success(responseBody, 201, { Location: `/posts/${createdId}` });
   }
   if (path.endsWith("/comments") && method === "POST") {
@@ -329,7 +374,7 @@ export async function handleMockMutation(request: NextRequest, segments: string[
       reactionCount: 0,
     };
     state.commentsByPost.set(postId, [...(state.commentsByPost.get(postId) ?? []), created]);
-    return success(commentDto(created), 201, { Location: `/posts/${postId}#${created.anchorKey}`, "X-Comment-Anchor": created.anchorKey });
+    return success(commentDto(created, true), 201, { Location: `/posts/${postId}#${created.anchorKey}`, "X-Comment-Anchor": created.anchorKey });
   }
 
   const bookmarkMatch = path.match(/^\/users\/me\/bookmarks\/([^/]+)$/);
@@ -367,6 +412,7 @@ export async function handleMockMutation(request: NextRequest, segments: string[
 
   if (path === "/notifications/read-cursor" && method === "PUT") return json({ readThrough: body.readThrough ?? now(), markedCount: 1, unreadCount: 0 });
   if (path === "/auth/sessions" && method === "POST") {
+    if (!(["linmo", "linmo@example.com"].includes(String(body.login).toLowerCase())) || body.password !== "prototype-only") return problem(request, 401, "INVALID_CREDENTIALS", "用户名或密码不正确");
     const responseBody = {
       accessToken: "mock-access-token",
       accessExpiresAt: "2026-07-14T16:30:00Z",
@@ -377,7 +423,7 @@ export async function handleMockMutation(request: NextRequest, segments: string[
       emailVerified: true,
     };
     const response = success(responseBody, 201);
-    response.cookies.set(SESSION_COOKIE, await createMockSession("controller"), { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 7 });
+    response.cookies.set(SESSION_COOKIE, await createMockSession("controller"), { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 7, priority: "high" });
     return response;
   }
   if (path === "/auth/registrations" && method === "POST") {
@@ -395,6 +441,12 @@ export async function handleMockMutation(request: NextRequest, segments: string[
   if (path === "/auth/password-resets" && method === "POST") {
     return success({ reset: true, passwordChangedAt: now(), revokedSessionCount: 2 }, 201);
   }
+  if (path === "/auth/current-session" && method === "DELETE") {
+    const response = new NextResponse(null, { status: 204, headers: { "Cache-Control": "no-store", "X-Request-Id": crypto.randomUUID() } });
+    response.cookies.set(SESSION_COOKIE, "", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 0, priority: "high" });
+    return response;
+  }
+  if (/^\/auth\/sessions\/[^/]+$/.test(path) && method === "DELETE") return new NextResponse(null, { status: 204, headers: { "Cache-Control": "no-store", "X-Request-Id": crypto.randomUUID() } });
   if (path === "/reports" && method === "POST") return success({ id: "report-mock-1", ...body, status: "SUBMITTED", createdAt: now() }, 201);
   if (path === "/appeals" && method === "POST") return success({ id: "appeal-mock-1", ...body, status: "SUBMITTED", createdAt: now() }, 201);
   if (method === "PATCH" && !request.headers.get("If-Match")) return problem(request, 412, "VERSION_MISMATCH", "请提供最新 If-Match 版本", { currentVersion: 1, currentEtag: etag(1) });

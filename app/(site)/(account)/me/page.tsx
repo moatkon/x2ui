@@ -1,3 +1,3 @@
-import { AccountRouteContent } from "@/app/_components/pages/account-content";
+import { MePage as MeContent } from "@/app/_components/pages/account-content";
 export const metadata = { title: "我的主页" };
-export default function MePage() { return <AccountRouteContent path="/me" query={{}} />; }
+export default function MePage() { return <MeContent />; }

@@ -1,6 +1,6 @@
-export const SESSION_COOKIE = "x2post_session";
+export const SESSION_COOKIE = process.env.NODE_ENV === "production" ? "__Host-x2post_session" : "x2post_session";
 
-export type MockSession = { userName: string; role: "member" | "moderator" | "controller"; expiresAt: number };
+export type MockSession = { sessionId: string; userName: string; role: "member" | "moderator" | "controller"; issuedAt: number; expiresAt: number };
 
 const encoder = new TextEncoder();
 
@@ -29,23 +29,25 @@ async function signature(payload: string) {
 
 export async function createMockSession(role: MockSession["role"] = "controller") {
   if (!secret()) throw new Error("生产环境必须配置至少 32 字符的 MOCK_SESSION_SECRET");
-  const session: MockSession = { userName: "linmo", role, expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7 };
+  const issuedAt = Date.now();
+  const session: MockSession = { sessionId: crypto.randomUUID(), userName: "linmo", role, issuedAt, expiresAt: issuedAt + 1000 * 60 * 60 * 24 * 7 };
   const payload = toBase64Url(JSON.stringify(session));
   return `${payload}.${toBase64Url(await signature(payload))}`;
 }
 
 export async function verifyMockSession(token?: string | null): Promise<MockSession | null> {
   if (!token || !secret()) return null;
-  const [payload, provided] = token.split(".");
-  if (!payload || !provided) return null;
-  const expected = await signature(payload);
-  const actual = fromBase64Url(provided);
-  if (expected.length !== actual.length) return null;
-  let mismatch = 0;
-  for (let index = 0; index < expected.length; index += 1) mismatch |= expected[index] ^ actual[index];
-  if (mismatch !== 0) return null;
   try {
+    const [payload, provided, extra] = token.split(".");
+    if (!payload || !provided || extra) return null;
+    const expected = await signature(payload);
+    const actual = fromBase64Url(provided);
+    if (expected.length !== actual.length) return null;
+    let mismatch = 0;
+    for (let index = 0; index < expected.length; index += 1) mismatch |= expected[index] ^ actual[index];
+    if (mismatch !== 0) return null;
     const parsed = JSON.parse(new TextDecoder().decode(fromBase64Url(payload))) as MockSession;
-    return parsed.expiresAt > Date.now() ? parsed : null;
+    const validRole = parsed.role === "member" || parsed.role === "moderator" || parsed.role === "controller";
+    return typeof parsed.sessionId === "string" && parsed.sessionId.length > 0 && parsed.userName === "linmo" && validRole && Number.isFinite(parsed.issuedAt) && parsed.expiresAt > Date.now() ? parsed : null;
   } catch { return null; }
 }

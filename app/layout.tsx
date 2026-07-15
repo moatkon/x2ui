@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
+import { connection } from "next/server";
+import { WebVitals } from "./_components/client/web-vitals";
 import { Geist } from "next/font/google";
 import "./globals.css";
 
@@ -19,13 +22,16 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", images: ["/opengraph-image"] },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  await connection();
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="zh-CN" data-theme="lofi" suppressHydrationWarning className={geist.className}>
-      <head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head>
+      <head><script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeScript }} /></head>
       <body>
         <a href="#main-content" className="btn btn-sm fixed left-3 top-3 z-50 -translate-y-24 focus:translate-y-0">跳到主要内容</a>
         {children}
+        <WebVitals />
       </body>
     </html>
   );

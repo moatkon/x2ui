@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ActionButton } from "../client/demo-actions";
+import { ActionButton } from "../client/action-button";
 import { EmptyState, Notice, PageHeader, Panel } from "../shared/ui";
 
 export function PrototypeStatesContent() {
