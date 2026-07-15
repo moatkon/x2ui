@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { comments, currentUser, posts } from "@/lib/mock-data";
 import { ActionButton } from "../client/demo-actions";
 import { Avatar } from "../shared/avatar";
@@ -10,6 +11,8 @@ const sections = [["profile", "公开资料"], ["posts", "帖子"], ["comments",
 export function UserContent({ path }: { path: string }) {
   const [, , userName, section = "profile"] = path.split("/");
   const userPosts = posts.filter((post) => post.author.userName === userName);
+  const knownUser = userName === currentUser.userName || posts.some((post) => post.author.userName === userName);
+  if (!knownUser) notFound();
   const displayName = userPosts[0]?.author.displayName ?? currentUser.displayName;
   return <><section className="overflow-hidden rounded-box border-2 border-base-content/20"><header className="p-5 sm:p-6"><div className="flex flex-col gap-4 sm:flex-row sm:items-center"><Avatar name={displayName} image={`user-${userName}`} sizeClass="size-20" /><div className="min-w-0 flex-1"><h1 className="text-2xl font-black">{displayName} <span className="text-base font-normal opacity-60">@{userName}</span></h1><p className="mt-1 opacity-70">上海 · 产品设计</p></div><div className="flex flex-wrap gap-2"><ActionButton message={`已关注${displayName}`}>关注</ActionButton><ActionButton dialogTitle={`屏蔽 @${userName}？`} dialogBody={<p>屏蔽后，你们将较少在 Feed、搜索、提及和通知中看到彼此。对方不会收到通知。</p>}>屏蔽</ActionButton><Link className="btn btn-ghost" href="/report/new">举报</Link></div></div></header><div className="border-t-2 border-base-content/20 px-3"><PageTabs items={sections.map(([key, label]) => ({ label, href: `/users/${userName}${key === "profile" ? "" : `/${key}`}`, active: section === key }))} label="用户公开分区" /></div></section><div className="mt-5"><UserSection section={section} userName={userName} /></div></>;
 }

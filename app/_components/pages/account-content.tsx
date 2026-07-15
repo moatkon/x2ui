@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { QueryParams } from "@/app/_lib/page-routing";
+import type { QueryParams } from "@/app/_lib/query";
 import { posts } from "@/lib/mock-data";
 import { ActionButton, AuthForm, ComposeForm, SettingsForm } from "../client/demo-actions";
 import { Avatar } from "../shared/avatar";
@@ -14,7 +14,7 @@ function AuthPage({ type }: { type: "login" | "register" | "verify" | "forgot" |
     verify: ["验证邮箱", "我们已向 li•••@example.com 发送验证链接"], forgot: ["找回密码", "输入注册邮箱，我们会发送重置说明"],
     reset: ["设置新密码", "新密码会让其他设备上的旧会话失效"],
   } as const;
-  return <div className="mx-auto w-full max-w-md"><Link className="mb-8 block text-center text-3xl font-black" href="/feed">X2Post</Link><section className="overflow-hidden rounded-box border-2 border-base-content/20"><header className="border-b-2 border-base-content/20 p-5 text-center"><h1 className="text-2xl font-black">{copy[type][0]}</h1><p className="mt-1 opacity-65">{copy[type][1]}</p></header><div className="p-5">{type === "verify" ? <Notice><p>请在 30 分钟内完成验证。如果没有收到，请检查垃圾邮件。</p></Notice> : null}<div className={type === "verify" ? "mt-4" : ""}><AuthForm type={type} /></div></div></section><p className="mt-5 text-center text-sm opacity-60">继续即表示你理解：已发布内容不能编辑或删除。</p></div>;
+  return <div className="mx-auto w-full max-w-md"><Link className="mb-8 block text-center text-3xl font-black" href="/">X2Post</Link><section className="overflow-hidden rounded-box border-2 border-base-content/20"><header className="border-b-2 border-base-content/20 p-5 text-center"><h1 className="text-2xl font-black">{copy[type][0]}</h1><p className="mt-1 opacity-65">{copy[type][1]}</p></header><div className="p-5">{type === "verify" ? <Notice><p>请在 30 分钟内完成验证。如果没有收到，请检查垃圾邮件。</p></Notice> : null}<div className={type === "verify" ? "mt-4" : ""}><AuthForm type={type} /></div></div></section><p className="mt-5 text-center text-sm opacity-60">继续即表示你理解：已发布内容不能编辑或删除。</p></div>;
 }
 
 function ComposePage({ compact, query }: { compact: boolean; query: QueryParams }) {
@@ -92,11 +92,11 @@ function ChangePasswordPage() {
 }
 
 function VerifyResultPage() {
-  return <div className="mx-auto w-full max-w-md"><Link className="mb-8 block text-center text-3xl font-black" href="/feed">X2Post</Link><Panel title="邮箱验证成功" footer={<Link className="btn btn-primary w-full" href="/auth/recover-task">继续</Link>}><div className="text-center"><div className="mx-auto flex size-14 items-center justify-center rounded-full border-2 border-success text-2xl text-success">✓</div><h1 className="mt-4 text-2xl font-black">欢迎加入 X2Post</h1><p className="mt-2 opacity-70">邮箱已验证。接下来将恢复你登录前的任务。</p></div></Panel><div className="mt-4"><Notice><p>链接失效或已使用时，此页会安全提示重新发送，不泄露账号信息。</p></Notice></div></div>;
+  return <div className="mx-auto w-full max-w-md"><Link className="mb-8 block text-center text-3xl font-black" href="/">X2Post</Link><Panel title="邮箱验证成功" footer={<Link className="btn btn-primary w-full" href="/auth/recover-task">继续</Link>}><div className="text-center"><div className="mx-auto flex size-14 items-center justify-center rounded-full border-2 border-success text-2xl text-success">✓</div><h1 className="mt-4 text-2xl font-black">欢迎加入 X2Post</h1><p className="mt-2 opacity-70">邮箱已验证。接下来将恢复你登录前的任务。</p></div></Panel><div className="mt-4"><Notice><p>链接失效或已使用时，此页会安全提示重新发送，不泄露账号信息。</p></Notice></div></div>;
 }
 
 function AuthRecoveryPage() {
-  return <div className="mx-auto w-full max-w-md"><Link className="mb-8 block text-center text-3xl font-black" href="/feed">X2Post</Link><Panel title="恢复之前的任务" footer={<div className="flex justify-end gap-2"><Link className="btn" href="/posts/immutable-content">取消</Link><ActionButton className="btn btn-primary" message="原任务已恢复：帖子已收藏" href="/posts/immutable-content" api={{ method: "PUT", path: "/users/me/bookmarks/immutable-content" }}>继续收藏</ActionButton></div>}><div className="flex items-start gap-3"><span className="loading loading-spinner loading-md" /><div><h1 className="font-bold">已回到原帖子与评论位置</h1><p className="mt-1 opacity-70">你登录前准备收藏帖子。为避免意外操作，请再次确认。</p></div></div><div className="mt-5 border-y-2 border-base-content/20 py-4"><p className="font-bold">为什么社区内容需要明确的不可变边界？</p><p className="mt-1 text-sm opacity-60">来源：帖子详情 · 评论区</p></div></Panel></div>;
+  return <div className="mx-auto w-full max-w-md"><Link className="mb-8 block text-center text-3xl font-black" href="/">X2Post</Link><Panel title="恢复之前的任务" footer={<div className="flex justify-end gap-2"><Link className="btn" href="/posts/immutable-content">取消</Link><ActionButton className="btn btn-primary" message="原任务已恢复：帖子已收藏" href="/posts/immutable-content" api={{ method: "PUT", path: "/users/me/bookmarks/immutable-content" }}>继续收藏</ActionButton></div>}><div className="flex items-start gap-3"><span className="loading loading-spinner loading-md" /><div><h1 className="font-bold">已回到原帖子与评论位置</h1><p className="mt-1 opacity-70">你登录前准备收藏帖子。为避免意外操作，请再次确认。</p></div></div><div className="mt-5 border-y-2 border-base-content/20 py-4"><p className="font-bold">为什么社区内容需要明确的不可变边界？</p><p className="mt-1 text-sm opacity-60">来源：帖子详情 · 评论区</p></div></Panel></div>;
 }
 
 export function AccountRouteContent({ path, query }: { path: string; query: QueryParams }) {
@@ -118,6 +118,6 @@ export function AccountRouteContent({ path, query }: { path: string; query: Quer
   if (path === "/appeals" || path.startsWith("/appeals/")) return <AppealsPage path={path} />;
   if (path === "/verify-email/result") return <VerifyResultPage />;
   if (path === "/auth/recover-task") return <AuthRecoveryPage />;
-  if (path === "/403") return <Panel title="没有访问权限" footer={<div className="flex gap-2"><Link className="btn btn-primary" href="/feed">返回首页</Link><Link className="btn" href="/nodes">查看公开规则</Link></div>}><h1 className="text-3xl font-black">403</h1><p className="mt-2 opacity-70">你的账号没有进入治理工作台的权限。公开内容仍可正常浏览。</p><div className="mt-4"><Notice kind="warning"><p>如果你刚获得权限，请重新登录或联系社区管理员确认授权。</p></Notice></div></Panel>;
+  if (path === "/403") return <Panel title="没有访问权限" footer={<div className="flex gap-2"><Link className="btn btn-primary" href="/">返回首页</Link><Link className="btn" href="/nodes">查看公开规则</Link></div>}><h1 className="text-3xl font-black">403</h1><p className="mt-2 opacity-70">你的账号没有进入治理工作台的权限。公开内容仍可正常浏览。</p><div className="mt-4"><Notice kind="warning"><p>如果你刚获得权限，请重新登录或联系社区管理员确认授权。</p></Notice></div></Panel>;
   return null;
 }

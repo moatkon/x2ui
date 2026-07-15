@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { ActionButton, SettingsForm } from "../client/demo-actions";
 import { Breadcrumbs, Notice, PageHeader, PageTabs, Panel, ProgressBar, StatGrid } from "../shared/ui";
 
@@ -25,7 +26,8 @@ function QuestsPage() {
 }
 
 function QuestDetail({ id }: { id: string }) {
-  const quest = quests.find((item) => item.id === id) ?? quests[0];
+  const quest = quests.find((item) => item.id === id);
+  if (!quest) notFound();
   return <><Breadcrumbs items={[{ label: "社区旅程", href: "/journey" }, { label: "任务板", href: "/quests" }, { label: quest.title }]} /><div className="mt-4"><PageHeader title={quest.title} description={`${quest.node} · ${quest.time} · 完成后 ${quest.reward}`} /></div><Panel title="为什么做"><p className="leading-relaxed">{quest.description}</p><div className="mt-4"><Notice kind="warning"><p>只提交你愿意公开保留的内容。评论提交后不能编辑或删除。</p></Notice></div></Panel><Panel className="mt-5" title="验收路径"><ul className="steps steps-vertical w-full sm:steps-horizontal"><li className="step step-primary">阅读节点规则</li><li className="step step-primary">选择真实主题</li><li className="step">提交贡献</li><li className="step">质量确认</li></ul></Panel><Panel className="mt-5" title="任务清单" footer={<div className="flex justify-end gap-2"><Link className="btn" href="/quests">暂时退出</Link><ActionButton className="btn btn-primary" dialogTitle="开始共建任务" dialogBody={<div><p>任务会保存来源和进度，但不会自动发布任何内容。</p><Link className="btn btn-primary mt-4" href="/posts/immutable-content">进入真实主题</Link></div>}>{quest.progress ? "继续任务" : "开始任务"}</ActionButton></div>}><div className="space-y-3"><label className="label justify-start gap-3"><input className="checkbox" type="checkbox" defaultChecked /><span>已阅读 {quest.node} 节点规则</span></label><label className="label justify-start gap-3"><input className="checkbox" type="checkbox" /><span>选择一个仍需要帮助的真实主题</span></label><label className="label justify-start gap-3"><input className="checkbox" type="checkbox" /><span>完成贡献并主动提交验收</span></label></div></Panel></>;
 }
 
@@ -41,7 +43,7 @@ function TeamsPage() {
 
 function OnboardingPage() {
   const options = [["回应具体问题", "帮助尚未得到有效首响的真实主题"], ["整理公开资料", "将分散讨论沉淀成可复用索引"], ["照护讨论秩序", "提醒规则、报告风险，不以处置数量计酬"], ["每周轻量参与", "最多 3 个激活任务，不设连续签到"]];
-  return <><PageHeader title="开启社区旅程" description="先选择愿意帮助的方式，再由你决定何时开始。" /><Notice kind="info"><p>旅程完全可选。跳过、暂停或休息都不会影响核心社区功能。</p></Notice><Panel className="mt-5" title="选择贡献偏好"><div className="grid gap-3 sm:grid-cols-2">{options.map(([title, description], index) => <label className="flex min-h-24 cursor-pointer gap-3 rounded-box border-2 border-base-content/20 p-4" key={title}><input className="checkbox checkbox-primary mt-1" type="checkbox" defaultChecked={index === 0 || index === 3} /><span><strong>{title}</strong><small className="mt-1 block opacity-65">{description}</small></span></label>)}</div><div className="mt-5 flex justify-end gap-2"><Link className="btn" href="/feed">暂时跳过</Link><ActionButton className="btn btn-primary" message="旅程偏好已保存" href="/quests">保存并查看任务</ActionButton></div></Panel></>;
+  return <><PageHeader title="开启社区旅程" description="先选择愿意帮助的方式，再由你决定何时开始。" /><Notice kind="info"><p>旅程完全可选。跳过、暂停或休息都不会影响核心社区功能。</p></Notice><Panel className="mt-5" title="选择贡献偏好"><div className="grid gap-3 sm:grid-cols-2">{options.map(([title, description], index) => <label className="flex min-h-24 cursor-pointer gap-3 rounded-box border-2 border-base-content/20 p-4" key={title}><input className="checkbox checkbox-primary mt-1" type="checkbox" defaultChecked={index === 0 || index === 3} /><span><strong>{title}</strong><small className="mt-1 block opacity-65">{description}</small></span></label>)}</div><div className="mt-5 flex justify-end gap-2"><Link className="btn" href="/">暂时跳过</Link><ActionButton className="btn btn-primary" message="旅程偏好已保存" href="/quests">保存并查看任务</ActionButton></div></Panel></>;
 }
 
 function ContributionsPage() {

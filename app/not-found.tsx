@@ -12,7 +12,7 @@ export default function NotFound() {
       <section className="overflow-hidden rounded-box border-2 border-base-content/20">
         <header className="border-b-2 border-base-content/20 px-5 py-4"><h1 className="text-3xl font-black">404</h1></header>
         <div className="p-5"><p className="opacity-70">链接可能已失效，或内容因隐私原因不可见。</p></div>
-        <footer className="border-t-2 border-base-content/20 px-5 py-4"><Link className="btn btn-primary" href="/feed">返回首页</Link></footer>
+        <footer className="border-t-2 border-base-content/20 px-5 py-4"><Link className="btn btn-primary" href="/">返回首页</Link></footer>
       </section>
     </main>
   );

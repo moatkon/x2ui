@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { nodes, posts } from "@/lib/mock-data";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://x2post.com";
+  const base = process.env.SITE_URL ?? "https://x2post.com";
   const updated = new Date("2026-07-14T00:00:00Z");
   const routes = [
     "",
@@ -13,13 +13,20 @@ export default function sitemap(): MetadataRoute.Sitemap {
       ...node.children.map((child) => `/nodes/${node.slug}/${child.slug}`),
     ]),
     ...posts.map((post) => `/posts/${post.id}`),
-    "/search",
     "/tags",
     ...[...new Set(posts.flatMap((post) => post.tags))].map((tag) => `/tags/${encodeURIComponent(tag)}`),
-    ...[...new Set(posts.map((post) => post.author.userName))].map((userName) => `/users/${userName}`),
+    ...[...new Set(posts.map((post) => post.author.userName))].flatMap((userName) => [
+      `/users/${userName}`,
+      `/users/${userName}/posts`,
+      `/users/${userName}/comments`,
+      `/users/${userName}/followers`,
+      `/users/${userName}/following`,
+    ]),
     "/coins/rules",
     "/coins/economy",
     "/seasons",
+    "/seasons/summer-first-reply",
+    "/seasons/spring-discovery",
   ];
 
   return routes.map((route) => ({

@@ -81,3 +81,4 @@ export function stableStringify(value: unknown): string {
   }
   return JSON.stringify(value);
 }
+import "server-only";

@@ -1,0 +1,3 @@
+import { JourneyRouteContent } from "@/app/_components/pages/journey-content";
+export const metadata = { title: "旅程状态样例" };
+export default function JourneyStatesPage() { return <JourneyRouteContent path="/journey/states" />; }

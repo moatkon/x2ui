@@ -218,6 +218,8 @@ out/
 .env
 .env.local
 .env.*.local
+.env.*
+!.env.example
 
 # npm cache directory
 .npm

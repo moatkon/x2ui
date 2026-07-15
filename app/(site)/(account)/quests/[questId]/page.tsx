@@ -1,0 +1,3 @@
+import { JourneyRouteContent } from "@/app/_components/pages/journey-content";
+export async function generateMetadata({ params }: { params: Promise<{ questId: string }> }) { return { title: `共建任务 · ${(await params).questId}` }; }
+export default async function QuestPage({ params }: { params: Promise<{ questId: string }> }) { const { questId } = await params; return <JourneyRouteContent path={`/quests/${questId}`} />; }
