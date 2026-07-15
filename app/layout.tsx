@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
+import { cookies } from "next/headers";
 import { connection } from "next/server";
 import { WebVitals } from "./_components/client/web-vitals";
 import { Geist } from "next/font/google";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"], display: "swap" });
-const themeScript = `(function(){try{var t=localStorage.getItem("x2post-theme");if(t==="night"||t==="lofi")document.documentElement.setAttribute("data-theme",t)}catch(e){}})()`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.SITE_URL ?? "https://x2post.com"),
@@ -24,10 +23,9 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   await connection();
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const theme = (await cookies()).get("x2post_theme")?.value === "night" ? "night" : "lofi";
   return (
-    <html lang="zh-CN" data-theme="lofi" suppressHydrationWarning className={geist.className}>
-      <head><script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeScript }} /></head>
+    <html lang="zh-CN" data-theme={theme} data-scroll-behavior="smooth" suppressHydrationWarning className={geist.className}>
       <body>
         <a href="#main-content" className="btn btn-sm fixed left-3 top-3 z-50 -translate-y-24 focus:translate-y-0">跳到主要内容</a>
         {children}
