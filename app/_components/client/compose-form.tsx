@@ -28,8 +28,10 @@ export function ComposeForm({ nodes, compact = false, initialNode = "product", i
         body: JSON.stringify({ title: compact ? null : title.trim(), bodyMarkdown: body.trim(), parentNodeSlug: parent.slug, childNodeSlug: childSlug || null, confirmedImmutable: true }),
       });
       if (!response.ok) throw new Error((await response.json().catch(() => null))?.detail ?? "发布失败");
+      const created = await response.json() as { post?: { id?: string } };
       notify(`已发布到 ${parent.name}${childSlug ? ` / ${parent.children.find((item) => item.slug === childSlug)?.name}` : "（综合）"}`);
-      router.push("/");
+      router.push(created.post?.id ? `/posts/${encodeURIComponent(created.post.id)}` : "/");
+      router.refresh();
     } catch (error) {
       notify(error instanceof Error ? error.message : "发布失败", "error");
     } finally {

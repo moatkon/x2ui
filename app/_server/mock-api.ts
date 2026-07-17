@@ -3,6 +3,7 @@ import { currentUser, cursorPage, nodes, posts } from "@/lib/mock-data";
 import { getMockApiState, stableStringify, type StoredMockComment } from "@/lib/mock-api-state";
 import { createMockSession, SESSION_COOKIE, verifyMockSession } from "@/lib/mock-session";
 import { parseJsonBody, validateBody } from "./mock-validation";
+import { proxyBackendRequest, usesBackendApi } from "./backend-gateway";
 
 const RULE_VERSION = "2026.07";
 const now = () => new Date().toISOString();
@@ -268,6 +269,7 @@ async function getMockResponse(request: NextRequest, segments: string[]) {
 }
 
 export async function handleMockGet(request: NextRequest, segments: string[]) {
+  if (usesBackendApi()) return proxyBackendRequest(request, segments);
   const response = await getMockResponse(request, segments);
   const path = `/${segments.join("/")}`;
   const publicCacheable = path === "/nodes" || path.startsWith("/nodes/") || path === "/feed" || path.startsWith("/search/") || path === "/tags" || path.startsWith("/tags/") || path === "/coin-rule-versions" || path.startsWith("/coin-economy/") || (path.startsWith("/posts/") && !path.endsWith("/comments")) || (path.startsWith("/users/") && !path.startsWith("/users/me"));
@@ -311,6 +313,7 @@ function rateLimit(request: NextRequest, path: string) {
 }
 
 export async function handleMockMutation(request: NextRequest, segments: string[], method: string) {
+  if (usesBackendApi()) return proxyBackendRequest(request, segments);
   const path = `/${segments.join("/")}`;
   const state = getMockApiState();
   const idempotencyKey = request.headers.get("Idempotency-Key");

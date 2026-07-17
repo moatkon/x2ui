@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, verifyMockSession } from "@/lib/mock-session";
+import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE, usesBackendApi } from "@/lib/auth-cookies";
 
 const privatePrefixes = ["/settings", "/me", "/quick-compose", "/compose", "/drafts", "/bookmarks", "/following", "/notifications", "/reports", "/report", "/appeals", "/journey", "/quests", "/play"];
 const governancePrefixes = ["/moderation", "/admin"];
@@ -35,13 +36,20 @@ export async function proxy(request: NextRequest) {
   };
 
   if (!needsSession(pathname)) return withSecurityHeaders(NextResponse.next({ request: { headers: requestHeaders } }));
-  const session = await verifyMockSession(request.cookies.get(SESSION_COOKIE)?.value);
+  const backendSession = usesBackendApi()
+    && Boolean(
+      request.cookies.get(ACCESS_TOKEN_COOKIE)?.value
+      || request.cookies.get(REFRESH_TOKEN_COOKIE)?.value,
+    );
+  const session = backendSession
+    ? { role: "member" as const }
+    : await verifyMockSession(request.cookies.get(SESSION_COOKIE)?.value);
   if (!session) {
     const login = new URL("/login", request.url);
     login.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
     return withSecurityHeaders(NextResponse.redirect(login));
   }
-  if (governancePrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) && !["moderator", "controller"].includes(session.role)) return withSecurityHeaders(NextResponse.redirect(new URL("/403", request.url)));
+  if (!backendSession && governancePrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) && !["moderator", "controller"].includes(session.role)) return withSecurityHeaders(NextResponse.redirect(new URL("/403", request.url)));
   return withSecurityHeaders(NextResponse.next({ request: { headers: requestHeaders } }));
 }
 

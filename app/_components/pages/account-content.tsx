@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { QueryParams } from "@/app/_lib/query";
-import { nodes, posts } from "@/lib/mock-data";
+import { posts } from "@/lib/mock-data";
+import { getPublicNodes } from "@/app/_server/public-content";
 import { ActionButton } from "../client/action-button";
 import { AuthForm } from "../client/auth-form";
 import { ComposeForm } from "../client/compose-form";
@@ -11,25 +12,27 @@ import { Breadcrumbs, DataTable, Notice, PageHeader, PageTabs, Panel } from "../
 
 const settingsTabs = [["profile", "资料"], ["privacy", "隐私"], ["notifications", "通知"], ["security", "安全"], ["sessions", "设备会话"]] as const;
 
-export function AccountAuthPage({ type }: { type: "login" | "register" | "verify" | "forgot" | "reset" }) {
+export function AccountAuthPage({ type, returnTo }: { type: "login" | "register" | "verify" | "forgot" | "reset"; returnTo?: string }) {
   const copy = {
     login: ["欢迎回来", "登录后继续参与讨论"], register: ["加入 X2Post", "从一段真诚的自我介绍开始"],
     verify: ["验证邮箱", "我们已向 li•••@example.com 发送验证链接"], forgot: ["找回密码", "输入注册邮箱，我们会发送重置说明"],
     reset: ["设置新密码", "新密码会让其他设备上的旧会话失效"],
   } as const;
-  return <div className="mx-auto w-full max-w-md"><Link className="mb-8 block text-center text-3xl font-black" href="/">X2Post</Link><section className="overflow-hidden rounded-box border-2 border-base-content/20"><header className="border-b-2 border-base-content/20 p-5 text-center"><h1 className="text-2xl font-black">{copy[type][0]}</h1><p className="mt-1 opacity-65">{copy[type][1]}</p></header><div className="p-5">{type === "verify" ? <Notice><p>请在 30 分钟内完成验证。如果没有收到，请检查垃圾邮件。</p></Notice> : null}<div className={type === "verify" ? "mt-4" : ""}><AuthForm type={type} /></div></div></section><p className="mt-5 text-center text-sm opacity-60">继续即表示你理解：已发布内容不能编辑或删除。</p></div>;
+  return <div className="mx-auto w-full max-w-md"><Link className="mb-8 block text-center text-3xl font-black" href="/">X2Post</Link><section className="overflow-hidden rounded-box border-2 border-base-content/20"><header className="border-b-2 border-base-content/20 p-5 text-center"><h1 className="text-2xl font-black">{copy[type][0]}</h1><p className="mt-1 opacity-65">{copy[type][1]}</p></header><div className="p-5">{type === "verify" ? <Notice><p>请在 30 分钟内完成验证。如果没有收到，请检查垃圾邮件。</p></Notice> : null}<div className={type === "verify" ? "mt-4" : ""}><AuthForm type={type} returnTo={returnTo} /></div></div></section><p className="mt-5 text-center text-sm opacity-60">继续即表示你理解：已发布内容不能编辑或删除。</p></div>;
 }
 
-export function ComposePage({ query }: { query: QueryParams }) {
+export async function ComposePage({ query }: { query: QueryParams }) {
+  const availableNodes = await getPublicNodes();
   const node = typeof query.node === "string" ? query.node : "product";
   const child = typeof query.subnode === "string" ? query.subnode : "";
-  return <><PageHeader title="发布帖子" description={query.from === "quick" ? "轻发布内容已带入，请补充标题后继续完善。" : "先保存为草稿，确认无误后再发布。"} /><Panel title="内容草稿"><ComposeForm nodes={nodes} initialNode={node} initialChild={child} /></Panel></>;
+  return <><PageHeader title="发布帖子" description={query.from === "quick" ? "轻发布内容已带入，请补充标题后继续完善。" : "先保存为草稿，确认无误后再发布。"} /><Panel title="内容草稿"><ComposeForm nodes={availableNodes} initialNode={node} initialChild={child} /></Panel></>;
 }
 
-export function QuickComposePage({ query }: { query: QueryParams }) {
+export async function QuickComposePage({ query }: { query: QueryParams }) {
+  const availableNodes = await getPublicNodes();
   const node = typeof query.node === "string" ? query.node : "product";
   const child = typeof query.subnode === "string" ? query.subnode : "";
-  return <><h1 className="sr-only">轻发布</h1><ComposeForm nodes={nodes} compact initialNode={node} initialChild={child} /></>;
+  return <><h1 className="sr-only">轻发布</h1><ComposeForm nodes={availableNodes} compact initialNode={node} initialChild={child} /></>;
 }
 
 export function DraftsPage() {

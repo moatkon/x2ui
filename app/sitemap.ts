@@ -1,9 +1,10 @@
 import type { MetadataRoute } from "next";
-import { nodes, posts } from "@/lib/mock-data";
+import { getPublicFeed, getPublicNodes, getPublicTags } from "@/app/_server/public-content";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = process.env.SITE_URL ?? "https://x2post.com";
-  const updated = new Date("2026-07-14T00:00:00Z");
+  const [nodes, feed, tags] = await Promise.all([getPublicNodes(), getPublicFeed(), getPublicTags()]);
+  const updated = new Date();
   const routes = [
     "",
     "/nodes",
@@ -12,10 +13,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
       `/nodes/${node.slug}/project`,
       ...node.children.map((child) => `/nodes/${node.slug}/${child.slug}`),
     ]),
-    ...posts.map((post) => `/posts/${post.id}`),
+    ...feed.items.map((post) => `/posts/${post.id}`),
     "/tags",
-    ...[...new Set(posts.flatMap((post) => post.tags))].map((tag) => `/tags/${encodeURIComponent(tag)}`),
-    ...[...new Set(posts.map((post) => post.author.userName))].flatMap((userName) => [
+    ...tags.map((tag) => `/tags/${encodeURIComponent(tag.slug)}`),
+    ...[...new Set(feed.items.map((post) => post.author.userName))].flatMap((userName) => [
       `/users/${userName}`,
       `/users/${userName}/posts`,
       `/users/${userName}/comments`,

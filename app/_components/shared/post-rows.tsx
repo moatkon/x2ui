@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { posts } from "@/lib/mock-data";
+import { posts as mockPosts, type PostSummary } from "@/lib/mock-data";
 import { Avatar } from "./avatar";
+import { EmptyState } from "./ui";
 
-type Post = (typeof posts)[number];
-
-export function PostRows({ filter, framed = true }: { filter?: (post: Post) => boolean; framed?: boolean }) {
+export function PostRows({ posts = mockPosts, filter, framed = true }: { posts?: PostSummary[]; filter?: (post: PostSummary) => boolean; framed?: boolean }) {
   const list = filter ? posts.filter(filter) : posts;
+  if (list.length === 0) return <EmptyState title="暂时没有公开帖子" description="这个范围内还没有可见内容，可以稍后再来看看。" />;
   return (
     <ul className={`list x2-list overflow-hidden ${framed ? "rounded-box border-2 border-base-content/20" : ""}`}>
       {list.map((post) => (

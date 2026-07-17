@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { currentUser, nodes, posts } from "@/lib/mock-data";
+import { getPublicNode, getPublicPost, getPublicUser } from "@/app/_server/public-content";
 
 const descriptions: Record<string, string> = {
   "/": "浏览 X2Post 最新公开讨论，按两级节点和标签发现值得参与的内容。",
@@ -30,24 +30,25 @@ export function metadataForPath(path: string, title = titles[path] ?? "X2Post", 
   };
 }
 
-export function postMetadata(id: string): Metadata {
-  const post = posts.find((item) => item.id === id);
-  if (!post) return { title: "帖子不存在", robots: { index: false, follow: false } };
-  return metadataForPath(`/posts/${id}`, post.title, post.excerpt);
+export async function postMetadata(id: string): Promise<Metadata> {
+  const detail = await getPublicPost(id);
+  if (!detail) return { title: "帖子不存在", robots: { index: false, follow: false } };
+  return metadataForPath(`/posts/${id}`, detail.post.title, detail.post.excerpt);
 }
 
-export function nodeMetadata(parentSlug: string, childSlug?: string): Metadata {
-  const parent = nodes.find((item) => item.slug === parentSlug);
-  const child = parent?.children.find((item) => item.slug === childSlug);
-  if (!parent || (childSlug && !child)) return { title: "节点不存在", robots: { index: false, follow: false } };
+export async function nodeMetadata(parentSlug: string, childSlug?: string): Promise<Metadata> {
+  const result = await getPublicNode(parentSlug, childSlug);
+  if (!result || (childSlug && !result.child)) return { title: "节点不存在", robots: { index: false, follow: false } };
+  const { parent, child } = result;
   const title = child ? `${parent.name} / ${child.name}` : parent.name;
   const description = child?.description ?? parent.description;
   return metadataForPath(`/nodes/${parentSlug}${childSlug ? `/${childSlug}` : ""}`, title, description);
 }
 
-export function userMetadata(userName: string, section?: string): Metadata {
-  const author = posts.find((post) => post.author.userName === userName)?.author;
-  const displayName = author?.displayName ?? (userName === currentUser.userName ? currentUser.displayName : userName);
+export async function userMetadata(userName: string, section?: string): Promise<Metadata> {
+  const profile = await getPublicUser(userName);
+  if (!profile) return { title: "用户不存在", robots: { index: false, follow: false } };
+  const displayName = profile.user.displayName;
   const sectionTitle: Record<string, string> = { posts: "公开帖子", comments: "公开评论", followers: "粉丝", following: "关注" };
   const title = section ? `${displayName}的${sectionTitle[section] ?? section}` : `${displayName} (@${userName})`;
   return metadataForPath(`/users/${userName}${section ? `/${section}` : ""}`, title, `${displayName} 在 X2Post 的公开资料与社区贡献。`);

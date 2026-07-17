@@ -34,10 +34,11 @@ export function ActionButton({ children, message = "操作已完成", dialogTitl
           headers,
           body: api.method === "DELETE" ? undefined : JSON.stringify(api.body ?? {}),
         });
-        if (!response.ok) throw new Error((await response.json().catch(() => null))?.detail ?? "Mock API 请求失败");
+        if (!response.ok) throw new Error((await response.json().catch(() => null))?.detail ?? "API 请求失败");
       }
       notify(message);
       if (href) router.push(href);
+      else if (api) router.refresh();
     } catch (error) {
       notify(error instanceof Error ? error.message : "操作失败", "error");
     } finally {

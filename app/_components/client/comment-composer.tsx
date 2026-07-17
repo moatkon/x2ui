@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { useFeedback } from "./feedback-provider";
 
 export function CommentComposer({ postId }: { postId: string }) {
   const { notify } = useFeedback();
+  const router = useRouter();
   const [body, setBody] = useState("");
   const [pending, setPending] = useState(false);
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -20,6 +22,7 @@ export function CommentComposer({ postId }: { postId: string }) {
       if (!response.ok) throw new Error((await response.json().catch(() => null))?.detail ?? "回应提交失败");
       setBody("");
       notify("回应已提交");
+      router.refresh();
     } catch (error) {
       notify(error instanceof Error ? error.message : "回应提交失败", "error");
     } finally {
