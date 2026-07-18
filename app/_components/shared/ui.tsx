@@ -37,6 +37,8 @@ export function EmptyState({ title, description, action }: { title: string; desc
   return <div className="rounded-box border-2 border-dashed border-base-content/25 p-8 text-center"><h2 className="text-xl font-bold">{title}</h2><p className="mx-auto mt-2 max-w-lg opacity-65">{description}</p>{action ? <div className="mt-4">{action}</div> : null}</div>;
 }
 
-export function Pagination() {
-  return <nav aria-label="分页" className="join"><button className="btn join-item" type="button" disabled>上一页</button><button className="btn btn-active join-item" type="button" aria-current="page">1</button><button className="btn join-item" type="button">2</button><button className="btn join-item" type="button">下一页</button></nav>;
+export function Pagination({ nextCursor, href, cursorParam = "cursor" }: { nextCursor?: string; href: string; cursorParam?: string }) {
+  if (!nextCursor) return <span className="text-sm opacity-60">已到最后</span>;
+  const separator = href.includes("?") ? "&" : "?";
+  return <nav aria-label="分页"><Link className="btn" href={`${href}${separator}${encodeURIComponent(cursorParam)}=${encodeURIComponent(nextCursor)}`}>下一页</Link></nav>;
 }

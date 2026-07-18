@@ -13,7 +13,7 @@
 2. [`prototype-api-design.md`](./prototype-api-design.md)：79 个页面到领域 API 的覆盖矩阵、聚合边界、状态机和跨域流程。
 3. [`prototype-api-contracts.md`](./prototype-api-contracts.md)：157 个业务 operation + 1 个 Observability operation 的逐字段契约、全部 DTO、枚举、入参位置、成功响应、错误码、权限、幂等、并发和字段验证规则。
 
-冲突优先级：字段契约 > 领域设计 > 当前 Mock 行为。Mock 是前端联调适配层，不是生产契约来源。
+冲突优先级：字段契约 > 领域设计 > 页面实现。前端不提供运行时 Mock；所有服务端事实必须来自 X2API。
 
 ## 2. 功能覆盖结论
 
@@ -33,27 +33,18 @@
 
 ## 3. 当前实现状态
 
-当前 `app/api/v1/` 有 34 个 Route Handler 文件，暴露 42 个可运行 Mock operation。剩余 operation 已完整定义契约，供后端按域逐步实现；前端不得因为 Mock 尚未覆盖就改写或合并目标接口。
+当前浏览器通过唯一同源 BFF `app/api/v1/[...path]/route.ts` 访问全部 `/api/v1/**` operation；公开 SSR Server Component 直接读取 X2API 公共 GET。`X2API_BASE_URL` 是必填启动配置，缺失时立即失败，禁止静默降级或回退静态业务数据。
 
-### 3.1 已实现 Mock operation
+### 3.1 会话桥接
 
-| 域 | operation |
-|---|---|
-| Auth | `POST /auth/registrations`、`POST /auth/sessions`、`GET /auth/sessions`、`DELETE /auth/sessions/{sessionId}`、`DELETE /auth/current-session`、`POST /auth/email-verifications`、`POST /auth/password-reset-deliveries`、`POST /auth/password-resets` |
-| Node/Feed | `GET /nodes`、`GET /nodes/{slug}`、`GET /nodes/{slug}/children/{childSlug}`、`GET /feed`、`GET /feed/following` |
-| Post/Comment | `POST /posts`、`GET /posts/{postId}`、`GET/POST /posts/{postId}/comments` |
-| Reaction/Bookmark | `PUT/DELETE /posts/{postId}/reactions/{reactionType}`、`PUT/DELETE /comments/{commentId}/reactions/{reactionType}`、`GET /users/me/bookmarks`、`PUT/DELETE /users/me/bookmarks/{postId}` |
-| Search/Tag | `GET /search/posts`、`GET /search/users`、`GET /search/nodes`、`GET /search/tags`、`GET /tags`、`GET /tags/{slug}/posts` |
-| User/Account | `GET /users/{userName}`、`GET /users/me/summary`、`GET /users/me/coin-wallet` |
-| Notification/Safety | `GET /notifications`、`PUT /notifications/read-cursor`、`POST /reports`、`POST /appeals` |
-| Coin public | `GET /coin-rule-versions`、`GET /coin-economy/summaries/{period}` |
+- A02/A10 返回的 access token 与 refresh token 仅写入 HttpOnly、SameSite cookie，不向浏览器 JavaScript 暴露。
+- BFF 为私有请求注入 Bearer access token；收到 401 时最多执行一次 A10 轮换并重放原业务请求。
+- A11 成功或刷新失败时清理本地会话 cookie。
+- 所有非安全方法校验精确同源 Origin，防止跨站请求伪造。
 
-### 3.2 Mock 与生产契约的边界
+### 3.2 页面接入状态
 
-- Mock 目前使用 HttpOnly 同源 cookie 维持演示会话；生产契约使用短期 Bearer access token + 单次轮换 refresh token。
-- Mock 数据使用可读 `resource-id`，例如 `immutable-content`、`comment-1`；生产端可以生成随机 ID，但必须继续满足 `resource-id` 格式且客户端不得解析。
-- Mock 的少数响应只返回页面当前使用的最小字段；生产实现必须返回字段契约要求的完整 DTO，并执行出站 schema 校验。
-- Mock 中未实现的按钮可以保留交互演示，但后端接入时必须使用对应独立 operation，不能新增 `/actions` 或通用 `/settings` 写接口。
+逐页面 operation、SSR、读写状态和验收项以 [`frontend-backend-integration-matrix.md`](./frontend-backend-integration-matrix.md) 为准。未接能力只能显示明确不可用或真实空态，禁止伪造成功提示。
 
 ## 4. 认证与权限
 
@@ -251,4 +242,4 @@ PATCH 至少一项；只有 location/avatar 允许显式 null 清空。成功返
 4. K/KM/KA：独立账本、悬赏、风险和 Controller 双人审批。
 5. J：旅程、项目、主题季和跨域 outbox 投影。
 
-每批必须先合入字段 schema 和契约测试，再接数据库/服务实现，最后替换对应 Mock；不得让前端从 Mock 响应反推生产字段。
+每批必须先合入字段 schema 和契约测试，再接数据库/服务实现，最后接入前端；不得让前端从临时响应反推生产字段。

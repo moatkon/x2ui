@@ -1,4 +1,5 @@
-import { UserPostsPage as UserPostsContent } from "@/app/_components/pages/user-content";
+import { UserPostsPage as UserPostsContent } from "@/app/_components/pages/users/posts-page";
 import { userMetadata } from "@/app/_lib/metadata";
+import type { QueryParams } from "@/app/_lib/query";
 export async function generateMetadata({ params }: { params: Promise<{ userName: string }> }) { return userMetadata((await params).userName, "posts"); }
-export default async function UserPostsPage({ params }: { params: Promise<{ userName: string }> }) { const { userName } = await params; return <UserPostsContent userName={userName} />; }
+export default async function UserPostsPage({ params, searchParams }: { params: Promise<{ userName: string }>; searchParams: Promise<QueryParams> }) { const [{ userName }, query] = await Promise.all([params, searchParams]); const cursor = query.cursor; return <UserPostsContent userName={userName} cursor={typeof cursor === "string" ? cursor : undefined} />; }

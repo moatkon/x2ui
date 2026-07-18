@@ -1,4 +1,5 @@
-import { UserFollowersPage as UserFollowersContent } from "@/app/_components/pages/user-content";
+import { UserFollowersPage as UserFollowersContent } from "@/app/_components/pages/users/followers-page";
 import { userMetadata } from "@/app/_lib/metadata";
+import type { QueryParams } from "@/app/_lib/query";
 export async function generateMetadata({ params }: { params: Promise<{ userName: string }> }) { return userMetadata((await params).userName, "followers"); }
-export default async function UserFollowersPage({ params }: { params: Promise<{ userName: string }> }) { const { userName } = await params; return <UserFollowersContent userName={userName} />; }
+export default async function UserFollowersPage({ params, searchParams }: { params: Promise<{ userName: string }>; searchParams: Promise<QueryParams> }) { const [{ userName }, query] = await Promise.all([params, searchParams]); const cursor = query.cursor; return <UserFollowersContent userName={userName} cursor={typeof cursor === "string" ? cursor : undefined} />; }

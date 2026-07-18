@@ -1,4 +1,4 @@
-import { ParentNodePage } from "@/app/_components/pages/nodes-content";
+import { ParentNodePage } from "@/app/_components/pages/nodes/parent-page";
 import { nodeMetadata } from "@/app/_lib/metadata";
 export async function generateMetadata({ params }: { params: Promise<{ parent: string }> }) { return nodeMetadata((await params).parent); }
-export default async function NodePage({ params }: { params: Promise<{ parent: string }> }) { const { parent } = await params; return <ParentNodePage slug={parent} />; }
+export default async function NodePage({ params, searchParams }: { params: Promise<{ parent: string }>; searchParams: Promise<{ cursor?: string }> }) { const { parent } = await params; return <ParentNodePage slug={parent} cursor={(await searchParams).cursor} />; }

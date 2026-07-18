@@ -1,16 +1,16 @@
 import Link from "next/link";
-import { posts as mockPosts, type PostSummary } from "@/lib/mock-data";
+import type { PostSummary } from "@/lib/models";
 import { Avatar } from "./avatar";
 import { EmptyState } from "./ui";
 
-export function PostRows({ posts = mockPosts, filter, framed = true }: { posts?: PostSummary[]; filter?: (post: PostSummary) => boolean; framed?: boolean }) {
+export function PostRows({ posts, filter, framed = true }: { posts: PostSummary[]; filter?: (post: PostSummary) => boolean; framed?: boolean }) {
   const list = filter ? posts.filter(filter) : posts;
   if (list.length === 0) return <EmptyState title="暂时没有公开帖子" description="这个范围内还没有可见内容，可以稍后再来看看。" />;
   return (
     <ul className={`list x2-list overflow-hidden ${framed ? "rounded-box border-2 border-base-content/20" : ""}`}>
       {list.map((post) => (
         <li className="list-row rounded-none px-4 py-4 sm:px-5" key={post.id}>
-          <Avatar name={post.author.displayName} image={`user-${post.author.userName}`} />
+          <Avatar name={post.author.displayName} src={post.author.avatarUrl} />
           <div className="list-col-grow min-w-0">
             <Link className="text-base font-bold leading-snug hover:underline" href={`/posts/${post.id}`}>{post.title}</Link>
             <p className="mt-1 line-clamp-2 opacity-75">{post.excerpt}</p>

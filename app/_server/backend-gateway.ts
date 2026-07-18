@@ -1,16 +1,14 @@
 import "server-only";
 
 import { NextRequest, NextResponse } from "next/server";
-import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE, usesBackendApi } from "@/lib/auth-cookies";
+import {
+  ACCESS_TOKEN_COOKIE,
+  REFRESH_TOKEN_COOKIE,
+  SESSION_COOKIE_OPTIONS,
+  requireBackendApiUrl,
+} from "@/lib/auth-cookies";
 import { mutationOriginAllowed, selectBrowserResponseBody } from "@/lib/bff-policy.mjs";
-
-type AuthSessionPayload = {
-  accessToken: string;
-  accessExpiresAt: string;
-  refreshToken: string;
-  refreshExpiresAt: string;
-  [key: string]: unknown;
-};
+import { isAuthSessionPayload, refreshSessionTokens, type AuthSessionPayload } from "@/lib/session-tokens";
 
 const requestHeadersToDrop = new Set([
   "authorization",
@@ -30,9 +28,7 @@ const responseHeadersToDrop = new Set([
 ]);
 
 function backendBaseUrl() {
-  const configured = process.env.X2API_BASE_URL;
-  if (!configured) throw new Error("X2API_BASE_URL is required when the backend API mode is enabled");
-  return configured.replace(/\/+$/, "");
+  return requireBackendApiUrl();
 }
 
 function backendUrl(request: NextRequest, segments: string[]) {
@@ -78,59 +74,23 @@ function maxAge(expiresAt: string) {
 }
 
 function setSessionCookies(response: NextResponse, payload: AuthSessionPayload) {
-  const common = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax" as const,
-    path: "/",
-    priority: "high" as const,
-  };
   response.cookies.set(ACCESS_TOKEN_COOKIE, payload.accessToken, {
-    ...common,
+    ...SESSION_COOKIE_OPTIONS,
     maxAge: maxAge(payload.accessExpiresAt),
   });
   response.cookies.set(REFRESH_TOKEN_COOKIE, payload.refreshToken, {
-    ...common,
+    ...SESSION_COOKIE_OPTIONS,
     maxAge: maxAge(payload.refreshExpiresAt),
   });
 }
 
 function clearSessionCookies(response: NextResponse) {
   const common = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax" as const,
-    path: "/",
+    ...SESSION_COOKIE_OPTIONS,
     maxAge: 0,
-    priority: "high" as const,
   };
   response.cookies.set(ACCESS_TOKEN_COOKIE, "", common);
   response.cookies.set(REFRESH_TOKEN_COOKIE, "", common);
-}
-
-function isAuthSessionPayload(value: unknown): value is AuthSessionPayload {
-  if (!value || typeof value !== "object") return false;
-  const item = value as Record<string, unknown>;
-  return typeof item.accessToken === "string"
-    && typeof item.accessExpiresAt === "string"
-    && typeof item.refreshToken === "string"
-    && typeof item.refreshExpiresAt === "string";
-}
-
-async function refreshSession(refreshToken: string) {
-  const response = await fetch(`${backendBaseUrl()}/api/v1/auth/session-refreshes`, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      "Idempotency-Key": crypto.randomUUID(),
-      "X-Request-Id": crypto.randomUUID(),
-    },
-    body: JSON.stringify({ refreshToken }),
-    cache: "no-store",
-  });
-  const payload: unknown = await response.json().catch(() => null);
-  return response.ok && isAuthSessionPayload(payload) ? payload : null;
 }
 
 async function toNextResponse(
@@ -221,7 +181,7 @@ export async function proxyBackendRequest(request: NextRequest, segments: string
   ) {
     const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
     if (refreshToken) {
-      rotatedSession = await refreshSession(refreshToken);
+      rotatedSession = await refreshSessionTokens(refreshToken);
       if (rotatedSession) {
         backendResponse = await callBackend(request, segments, rotatedSession.accessToken, body);
       }
@@ -240,5 +200,3 @@ export async function proxyBackendRequest(request: NextRequest, segments: string
     || (backendResponse.status === 401 && Boolean(request.cookies.get(REFRESH_TOKEN_COOKIE)));
   return toNextResponse(backendResponse, rotatedSession, false, shouldClear);
 }
-
-export { usesBackendApi };

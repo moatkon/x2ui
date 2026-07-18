@@ -1,6 +1,6 @@
 # X2Post API 字段级契约（当前网站完整基线）
 
-> 状态：后端实现、Mock、前端联调和契约测试的唯一字段级基线，更新于 2026-07-15。
+> 状态：后端实现、前端联调和契约测试的唯一字段级基线，更新于 2026-07-18。前端不提供运行时 Mock。
 > 范围：覆盖当前 Next.js 项目全部产品页面与交互。本文把复合 method 行展开为 157 个业务 operation，并定义 1 个 Observability operation；`docs/prototype-api-design.md` 负责领域边界和页面覆盖，若两者冲突，以本文字段契约为准。
 > 所有路径均为完整生产路径；禁止 `data:any`、`metadata:any`、通用 `actionType`、万能 page payload 和未声明的请求/响应字段。
 

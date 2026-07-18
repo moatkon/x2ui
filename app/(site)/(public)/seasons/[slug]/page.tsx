@@ -1,4 +1,4 @@
-import { SeasonDetailPage } from "@/app/_components/pages/seasons-content";
+import { SeasonDetailPage } from "@/app/_components/pages/seasons/detail-page";
 import { metadataForPath } from "@/app/_lib/metadata";
 const seasons = ["summer-first-reply", "spring-discovery"];
 export function generateStaticParams() { return seasons.map((slug) => ({ slug })); }

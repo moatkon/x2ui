@@ -1,8 +1,7 @@
 import "server-only";
 
-import type { CommunityNode, PostSummary } from "@/lib/mock-data";
-import { comments as mockComments, currentUser, nodes as mockNodes, posts as mockPosts } from "@/lib/mock-data";
-import { usesBackendApi } from "@/lib/auth-cookies";
+import type { CommunityNode, PostSummary } from "@/lib/models";
+import { requireBackendApiUrl } from "@/lib/auth-cookies";
 
 type CursorPage<T> = { items: T[]; nextCursor?: string; hasMore: boolean };
 type ApiNodeSummary = {
@@ -10,9 +9,9 @@ type ApiNodeSummary = {
   parentSlug?: string; description: string; postCount: number; followerCount: number;
 };
 type ApiNodeDetail = { node: ApiNodeSummary; ruleText: string; children: ApiNodeSummary[] };
-type ApiPostSummary = {
+export type ApiPostSummary = {
   id: string; title: string; displayTitle: string; excerpt: string;
-  author: { userName: string; displayName: string };
+  author: { userName: string; displayName: string; avatarUrl?: string };
   nodePath: { parent: ApiNodeSummary; child?: ApiNodeSummary; displayName: string };
   tags: Array<{ slug: string; label: string; publicPostCount: number }>;
   createdAt: string;
@@ -20,7 +19,7 @@ type ApiPostSummary = {
 };
 export type ApiComment = {
   id: string; postId: string; anchorKey: string; bodyMarkdown: string;
-  author: { userName: string; displayName: string };
+  author: { userName: string; displayName: string; avatarUrl?: string };
   createdAt: string; replyCount: number; reactionCount: number;
 };
 export type ApiPublicUserSummary = { id: string; userName: string; displayName: string; avatarUrl?: string };
@@ -32,6 +31,48 @@ export type ApiPublicUser = {
   stats: { postCount: number; commentCount: number; followingCount: number; followerCount: number };
 };
 export type ApiTagSummary = { slug: string; label: string; publicPostCount: number };
+export type ApiQuest = {
+  id: string;
+  title: string;
+  description: string;
+  status: "AVAILABLE" | "ACTIVE" | "UNAVAILABLE";
+  cxpPotential: number;
+};
+export type ApiCurrentNodeProject = {
+  project: {
+    id: string;
+    node: ApiNodeSummary;
+    title: string;
+    goal: string;
+    status: "OPEN" | "ARCHIVED";
+    memberCount: number;
+    memberLimit: number;
+    progress: { accepted: number; target: number };
+    openTaskCount: number;
+    participant: boolean;
+    displayNamePublic?: boolean;
+  };
+  quests: ApiQuest[];
+  acceptanceRule: string;
+  contributors: ApiPublicUserSummary[];
+};
+export type ApiSeason = {
+  slug: string;
+  title: string;
+  scope: string;
+  status: "UPCOMING" | "ACTIVE" | "ARCHIVED";
+  startsAt: string;
+  endsAt: string;
+  progress: { accepted: number; target: number };
+  goal: string;
+  acceptanceRule: string;
+  archiveProjectId?: string;
+};
+export type ApiSeasonDetail = {
+  season: ApiSeason;
+  steps: Array<{ label: string; completed: boolean }>;
+  availableQuestCount: number;
+};
 type ApiPostDetail = { post: ApiPostSummary; bodyMarkdown: string; bodyHtml: string };
 type FeedResponse = {
   page: CursorPage<ApiPostSummary>;
@@ -45,9 +86,7 @@ export class PublicApiError extends Error {
 }
 
 function apiBaseUrl() {
-  const value = process.env.X2API_BASE_URL;
-  if (!value) throw new Error("X2API_BASE_URL is required");
-  return value.replace(/\/+$/, "");
+  return requireBackendApiUrl();
 }
 
 async function publicGet<T>(path: string, revalidate = 60): Promise<T> {
@@ -71,7 +110,7 @@ function createdLabel(value: string) {
   }).format(timestamp);
 }
 
-function toPostSummary(post: ApiPostSummary, bodyMarkdown = ""): PostSummary {
+export function toPostSummary(post: ApiPostSummary, bodyMarkdown = ""): PostSummary {
   return {
     id: post.id,
     title: post.title || post.displayTitle,
@@ -114,17 +153,11 @@ function toCommunityNode(detail: ApiNodeDetail): CommunityNode {
 }
 
 export async function getPublicNodes() {
-  if (!usesBackendApi()) return mockNodes;
   const response = await publicGet<{ items: ApiNodeDetail[] }>("/nodes", 300);
   return response.items.map(toCommunityNode);
 }
 
 export async function getPublicNode(parentSlug: string, childSlug?: string) {
-  if (!usesBackendApi()) {
-    const parent = mockNodes.find((node) => node.slug === parentSlug);
-    if (!parent) return null;
-    return { parent, child: childSlug ? parent.children.find((child) => child.slug === childSlug) ?? null : null };
-  }
   try {
     const parentDetail = await publicGet<ApiNodeDetail>(`/nodes/${encodeURIComponent(parentSlug)}`, 300);
     const parent = toCommunityNode(parentDetail);
@@ -150,25 +183,21 @@ export async function getPublicNode(parentSlug: string, childSlug?: string) {
   }
 }
 
-export async function getPublicFeed(parentNode?: string, childNode?: string) {
-  if (!usesBackendApi()) {
-    const items = mockPosts.filter((post) => childNode
-      ? post.nodePath.parentSlug === parentNode && post.nodePath.childSlug === childNode
-      : parentNode ? post.nodePath.parentSlug === parentNode : true);
-    return { items, recovery: "NONE" as const };
-  }
+export async function getPublicFeed(parentNode?: string, childNode?: string, cursor?: string) {
   const query = new URLSearchParams({ limit: "50" });
   if (parentNode) query.set("parentNode", parentNode);
   if (childNode) query.set("childNode", childNode);
+  if (cursor) query.set("cursor", cursor);
   const response = await publicGet<FeedResponse>(`/feed?${query}`, 60);
-  return { items: response.page.items.map((post) => toPostSummary(post)), recovery: response.recovery };
+  return {
+    items: response.page.items.map((post) => toPostSummary(post)),
+    recovery: response.recovery,
+    nextCursor: response.page.nextCursor,
+    hasMore: response.page.hasMore,
+  };
 }
 
 export async function getPublicPost(postId: string) {
-  if (!usesBackendApi()) {
-    const post = mockPosts.find((item) => item.id === postId);
-    return post ? { post, bodyMarkdown: post.bodyMarkdown } : null;
-  }
   try {
     const detail = await publicGet<ApiPostDetail>(`/posts/${encodeURIComponent(postId)}`, 60);
     return { post: toPostSummary(detail.post, detail.bodyMarkdown), bodyMarkdown: detail.bodyMarkdown };
@@ -178,34 +207,28 @@ export async function getPublicPost(postId: string) {
   }
 }
 
-export async function getPublicComments(postId: string) {
-  if (!usesBackendApi()) return mockComments.map((comment) => ({
-    ...comment,
-    postId,
-    anchorKey: `comment-${comment.id}`,
-    reactionCount: 0,
-  }));
+function publicCursorQuery(cursor?: string, entries: Record<string, string> = {}) {
+  const query = new URLSearchParams({ ...entries, limit: "50" });
+  if (cursor) query.set("cursor", cursor);
+  return query;
+}
+
+export async function getPublicComments(postId: string, cursor?: string) {
   const response = await publicGet<CursorPage<ApiComment>>(
-    `/posts/${encodeURIComponent(postId)}/comments?sort=OLDEST&limit=100`,
+    `/posts/${encodeURIComponent(postId)}/comments?${publicCursorQuery(cursor, { sort: "OLDEST" })}`,
     30,
   );
-  return response.items;
+  return response;
+}
+
+export async function getPublicCommentReplies(commentId: string, cursor?: string) {
+  return publicGet<CursorPage<ApiComment>>(
+    `/comments/${encodeURIComponent(commentId)}/replies?${publicCursorQuery(cursor)}`,
+    30,
+  );
 }
 
 export async function getPublicUser(userName: string) {
-  if (!usesBackendApi()) {
-    const authored = mockPosts.find((post) => post.author.userName === userName)?.author;
-    if (!authored && userName !== currentUser.userName) return null;
-    return {
-      user: { id: `user-${userName}`, userName, displayName: authored?.displayName ?? currentUser.displayName },
-      bio: userName === currentUser.userName ? currentUser.bio : "",
-      location: userName === currentUser.userName ? currentUser.location : undefined,
-      joinedAt: "2024-08-01T00:00:00Z",
-      stats: userName === currentUser.userName
-        ? currentUser.stats
-        : { postCount: 1, commentCount: 0, followingCount: 0, followerCount: 0 },
-    } satisfies ApiPublicUser;
-  }
   try {
     return await publicGet<ApiPublicUser>(`/users/${encodeURIComponent(userName)}`, 60);
   } catch (error) {
@@ -214,102 +237,115 @@ export async function getPublicUser(userName: string) {
   }
 }
 
-export async function getPublicUserPosts(userName: string) {
-  if (!usesBackendApi()) return mockPosts.filter((post) => post.author.userName === userName);
+export async function getPublicUserPosts(userName: string, cursor?: string) {
   const response = await publicGet<CursorPage<ApiPostSummary>>(
-    `/users/${encodeURIComponent(userName)}/posts?limit=50`,
+    `/users/${encodeURIComponent(userName)}/posts?${publicCursorQuery(cursor)}`,
     60,
   );
-  return response.items.map((post) => toPostSummary(post));
+  return { ...response, items: response.items.map((post) => toPostSummary(post)) };
 }
 
-export async function getPublicUserComments(userName: string) {
-  if (!usesBackendApi()) return mockComments.map((comment) => ({
-    ...comment,
-    postId: mockPosts[0]?.id ?? "post",
-    anchorKey: `comment-${comment.id}`,
-    reactionCount: 0,
-  }));
-  const response = await publicGet<CursorPage<ApiComment>>(
-    `/users/${encodeURIComponent(userName)}/comments?limit=50`,
+export function getPublicUserComments(userName: string, cursor?: string) {
+  return publicGet<CursorPage<ApiComment>>(
+    `/users/${encodeURIComponent(userName)}/comments?${publicCursorQuery(cursor)}`,
     60,
   );
-  return response.items;
 }
 
 export async function getPublicRelationshipUsers(
   userName: string,
   relationship: "followers" | "following",
+  cursor?: string,
 ) {
-  if (!usesBackendApi()) {
-    return [
-      { id: "user-qingyu", userName: "qingyu", displayName: "青屿" },
-      { id: "user-ache", userName: "ache", displayName: "阿澈" },
-      { id: "user-weekend", userName: "weekend", displayName: "周末写字" },
-    ] satisfies ApiPublicUserSummary[];
-  }
-  const suffix = relationship === "following" ? "?section=USERS&limit=50" : "?limit=50";
-  const response = await publicGet<CursorPage<ApiPublicUserSummary>>(
-    `/users/${encodeURIComponent(userName)}/${relationship}${suffix}`,
+  const query = publicCursorQuery(
+    cursor,
+    relationship === "following" ? { section: "USERS" } : {},
+  );
+  return publicGet<CursorPage<ApiPublicUserSummary>>(
+    `/users/${encodeURIComponent(userName)}/${relationship}?${query}`,
     60,
   );
-  return response.items;
 }
 
-export async function getPublicTags() {
-  if (!usesBackendApi()) {
-    return [...new Set(mockPosts.flatMap((post) => post.tags))].map((label) => ({
-      slug: encodeURIComponent(label),
-      label,
-      publicPostCount: mockPosts.filter((post) => post.tags.includes(label)).length,
-    }));
-  }
-  const response = await publicGet<CursorPage<ApiTagSummary>>("/tags?limit=100", 300);
-  return response.items;
+export function getPublicTags(cursor?: string) {
+  return publicGet<CursorPage<ApiTagSummary>>(`/tags?${publicCursorQuery(cursor)}`, 300);
 }
 
-export async function getPublicTagPosts(slug: string) {
-  if (!usesBackendApi()) {
-    const label = decodeURIComponent(slug);
-    const items = mockPosts.filter((post) => post.tags.includes(label));
-    return items.length ? { tag: { slug, label, publicPostCount: items.length }, items } : null;
-  }
+export async function getPublicTagPosts(slug: string, cursor?: string) {
   try {
     const response = await publicGet<{ tag: ApiTagSummary; page: CursorPage<ApiPostSummary> }>(
-      `/tags/${encodeURIComponent(slug)}/posts?limit=50`,
+      `/tags/${encodeURIComponent(slug)}/posts?${publicCursorQuery(cursor)}`,
       60,
     );
-    return { tag: response.tag, items: response.page.items.map((post) => toPostSummary(post)) };
+    return {
+      tag: response.tag,
+      page: {
+        ...response.page,
+        items: response.page.items.map((post) => toPostSummary(post)),
+      },
+    };
   } catch (error) {
     if (error instanceof PublicApiError && error.status === 404) return null;
     throw error;
   }
 }
 
-export async function searchPublicPosts(query: string) {
-  if (!usesBackendApi()) return mockPosts.filter((post) => `${post.title}${post.excerpt}${post.tags.join("")}`.includes(query));
-  const params = new URLSearchParams({ q: query, sort: "RELEVANCE", limit: "50" });
+export async function searchPublicPosts(query: string, sort = "RELEVANCE", cursor?: string, parentNode?: string, childNode?: string) {
+  const params = new URLSearchParams({ q: query, sort, limit: "50" });
+  if (cursor) params.set("cursor", cursor);
+  if (parentNode) params.set("parentNode", parentNode);
+  if (childNode) params.set("childNode", childNode);
   const response = await publicGet<CursorPage<ApiPostSummary>>(`/search/posts?${params}`, 30);
-  return response.items.map((post) => toPostSummary(post));
+  return {
+    items: response.items.map((post) => toPostSummary(post)),
+    nextCursor: response.nextCursor,
+    hasMore: response.hasMore,
+  };
 }
 
-export async function searchPublicUsers(query: string) {
-  if (!usesBackendApi()) {
-    const profile = await getPublicUser(currentUser.userName);
-    return profile ? [profile.user] : [];
-  }
+export async function searchPublicUsers(query: string, cursor?: string) {
   const params = new URLSearchParams({ q: query, limit: "50" });
-  return (await publicGet<CursorPage<ApiPublicUserSummary>>(`/search/users?${params}`, 30)).items;
+  if (cursor) params.set("cursor", cursor);
+  return publicGet<CursorPage<ApiPublicUserSummary>>(`/search/users?${params}`, 30);
 }
 
 export async function searchPublicNodes(query: string) {
-  if (!usesBackendApi()) return mockNodes.filter((node) => `${node.name}${node.description}`.includes(query));
   const params = new URLSearchParams({ q: query, limit: "50" });
   return (await publicGet<{ items: ApiNodeSummary[] }>(`/search/nodes?${params}`, 30)).items;
 }
 
 export async function searchPublicTags(query: string) {
-  if (!usesBackendApi()) return (await getPublicTags()).filter((tag) => tag.label.includes(query));
   const params = new URLSearchParams({ q: query, limit: "50" });
   return (await publicGet<{ items: ApiTagSummary[] }>(`/search/tags?${params}`, 30)).items;
+}
+
+export async function getCurrentNodeProject(slug: string) {
+  try {
+    return await publicGet<ApiCurrentNodeProject>(
+      `/nodes/${encodeURIComponent(slug)}/projects/current`,
+      60,
+    );
+  } catch (error) {
+    if (error instanceof PublicApiError && error.status === 404) return null;
+    throw error;
+  }
+}
+
+export function getPublicSeasons(cursor?: string) {
+  return publicGet<CursorPage<ApiSeason>>(
+    `/seasons?${publicCursorQuery(cursor, { status: "ALL" })}`,
+    300,
+  );
+}
+
+export async function getPublicSeason(slug: string) {
+  try {
+    return await publicGet<ApiSeasonDetail>(
+      `/seasons/${encodeURIComponent(slug)}`,
+      300,
+    );
+  } catch (error) {
+    if (error instanceof PublicApiError && error.status === 404) return null;
+    throw error;
+  }
 }

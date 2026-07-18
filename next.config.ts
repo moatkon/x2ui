@@ -1,7 +1,23 @@
 import type { NextConfig } from "next";
+import { resolveOriginPolicy } from "./lib/origin-policy.mjs";
+
+resolveOriginPolicy(
+  process.env.SITE_URL,
+  process.env.X2API_BASE_URL,
+  process.env.NODE_ENV === "production",
+);
+const backendUrl = new URL(process.env.X2API_BASE_URL!);
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  images: {
+    remotePatterns: [{
+      protocol: backendUrl.protocol === "https:" ? "https" : "http",
+      hostname: backendUrl.hostname,
+      port: backendUrl.port,
+      pathname: "/**",
+    }],
+  },
   async redirects() {
     return [
       { source: "/feed", destination: "/", permanent: true },

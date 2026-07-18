@@ -3,7 +3,7 @@ import { getPublicFeed, getPublicNodes, getPublicTags } from "@/app/_server/publ
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = process.env.SITE_URL ?? "https://x2post.com";
-  const [nodes, feed, tags] = await Promise.all([getPublicNodes(), getPublicFeed(), getPublicTags()]);
+  const [nodes, feed, tagPage] = await Promise.all([getPublicNodes(), getPublicFeed(), getPublicTags()]);
   const updated = new Date();
   const routes = [
     "",
@@ -15,7 +15,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ]),
     ...feed.items.map((post) => `/posts/${post.id}`),
     "/tags",
-    ...tags.map((tag) => `/tags/${encodeURIComponent(tag.slug)}`),
+    ...tagPage.items.map((tag) => `/tags/${encodeURIComponent(tag.slug)}`),
     ...[...new Set(feed.items.map((post) => post.author.userName))].flatMap((userName) => [
       `/users/${userName}`,
       `/users/${userName}/posts`,

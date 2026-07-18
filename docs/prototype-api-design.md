@@ -1,6 +1,6 @@
 # X2Post 当前网站功能与领域 API 设计
 
-> 状态：领域设计基线（依据当前 `app/` 页面、`app/_components/pages/` 交互、`app/api/v1/` Route Handler 与 `lib/mock-*`，2026-07-15）
+> 状态：领域设计基线（依据当前 `app/` 页面、`app/_components/pages/` 交互、统一 BFF 与 X2API SDK，2026-07-18）
 > 目标：覆盖当前 Next.js 网站全部业务页面；API 单一职责、读写分离、领域边界明确。字段、格式、必填性和逐字段验证以 `docs/prototype-api-contracts.md` 为唯一契约。
 
 ## 1. 结论与现状差距

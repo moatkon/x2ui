@@ -1,3 +1,3 @@
-import { PrivacySettingsPage } from "@/app/_components/pages/account-content";
+import { PrivacySettingsPage } from "@/app/_components/pages/account/privacy-settings-page";
 export const metadata = { title: "设置 · 隐私" };
 export default function Page() { return <PrivacySettingsPage />; }
